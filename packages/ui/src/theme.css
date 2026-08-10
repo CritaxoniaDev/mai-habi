@@ -1,0 +1,363 @@
+/*
+ * The design system shared by the editor and the viewer.
+ *
+ * Components never name a colour. They consume semantic tokens, and only this
+ * file decides what those tokens mean in each theme.
+ *
+ * Two rules are enforced by `npm run verify`:
+ *   - every token defined for light is also defined for dark
+ *   - no product text exceeds font-weight 400, and 300 is the default
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* --------------------------------------------------------------------- light */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces, from furthest back to closest. */
+  --background: #fafafa;
+  --surface: #ffffff;
+  --surface-secondary: #f7f7f7;
+  --surface-raised: #ffffff;
+  --surface-hover: #f5f5f5;
+  --surface-active: #eeeeee;
+
+  --border: #e5e5e5;
+  --border-strong: #d4d4d4;
+
+  /*
+   * Three text levels, all of which clear WCAG AA against `--background`.
+   * `--subtle-foreground` is deliberately not one of them: it is for
+   * decorative glyphs and disabled marks, never for text a user must read.
+   */
+  --foreground: #171717;
+  --foreground-secondary: #525252;
+  /* Held at 4.5:1 against the hover and active surfaces too, not just canvas. */
+  --muted-foreground: #6a6a6a;
+  /* Darker than the usual #a3a3a3 so decorative marks still clear 3:1. */
+  --subtle-foreground: #8f8f8f;
+
+  --accent: #171717;
+  --accent-foreground: #ffffff;
+  --accent-hover: #333333;
+
+  --success: #067647;
+  --success-surface: #ecfdf3;
+  --warning: #b54708;
+  --warning-surface: #fffaeb;
+  --danger: #b42318;
+  --danger-surface: #fef3f2;
+  --danger-border: #fecdca;
+
+  --focus-ring: #171717;
+  --selection: #dedede;
+  --scrollbar-thumb: #d4d4d4;
+  --scrollbar-thumb-hover: #b8b8b8;
+
+  --shadow-overlay: 0 4px 20px rgb(0 0 0 / 0.07);
+  --shadow-dialog: 0 8px 40px rgb(0 0 0 / 0.1);
+  --backdrop: rgb(23 23 23 / 0.14);
+}
+
+/* ---------------------------------------------------------------------- dark */
+
+.dark {
+  color-scheme: dark;
+
+  --background: #0a0a0a;
+  --surface: #111111;
+  --surface-secondary: #151515;
+  --surface-raised: #181818;
+  --surface-hover: #1f1f1f;
+  --surface-active: #262626;
+
+  --border: #262626;
+  --border-strong: #343434;
+
+  --foreground: #f5f5f5;
+  --foreground-secondary: #d4d4d4;
+  --muted-foreground: #a3a3a3;
+  --subtle-foreground: #737373;
+
+  --accent: #f5f5f5;
+  --accent-foreground: #0a0a0a;
+  --accent-hover: #ffffff;
+
+  --success: #47cd89;
+  --success-surface: #0c1f16;
+  --warning: #fdb022;
+  --warning-surface: #241a09;
+  --danger: #fda29b;
+  --danger-surface: #2a1211;
+  --danger-border: #55201d;
+
+  --focus-ring: #f5f5f5;
+  --selection: #333333;
+  --scrollbar-thumb: #343434;
+  --scrollbar-thumb-hover: #454545;
+
+  --shadow-overlay: 0 4px 20px rgb(0 0 0 / 0.5);
+  --shadow-dialog: 0 8px 40px rgb(0 0 0 / 0.6);
+  --backdrop: rgb(0 0 0 / 0.55);
+}
+
+/* ------------------------------------------------------------------- tokens */
+
+/*
+ * `inline` matters: the utilities emit `var(--foreground)` rather than the
+ * value it holds right now, which is what lets a single class react to a theme
+ * change with no re-render.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-hover: var(--accent-hover);
+
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-border: var(--danger-border);
+
+  --color-focus-ring: var(--focus-ring);
+  --color-backdrop: var(--backdrop);
+}
+
+@theme {
+  --font-sans: 'Geist Variable', Geist, ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SFMono-Regular',
+    'JetBrains Mono', Menlo, monospace;
+
+  /* One type scale for the whole product. */
+  --text-page: 32px;
+  --text-page--line-height: 40px;
+  --text-page--letter-spacing: -0.02em;
+
+  --text-section: 20px;
+  --text-section--line-height: 28px;
+  --text-section--letter-spacing: -0.015em;
+
+  --text-panel: 14px;
+  --text-panel--line-height: 20px;
+
+  --text-body: 14px;
+  --text-body--line-height: 21px;
+
+  --text-secondary: 13px;
+  --text-secondary--line-height: 20px;
+
+  --text-label: 12px;
+  --text-label--line-height: 18px;
+
+  --text-meta: 12px;
+  --text-meta--line-height: 18px;
+
+  --text-micro: 11px;
+  --text-micro--line-height: 16px;
+
+  --text-code: 12px;
+  --text-code--line-height: 18px;
+
+  /* Small controls, inputs and buttons, panels, dialogs. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-dialog: var(--shadow-dialog);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+}
+
+/*
+ * A predictable stack. Nothing in the product may invent a z-index — Monaco,
+ * resizable panels and portalled overlays otherwise fight each other.
+ */
+@utility z-header {
+  z-index: 10;
+}
+@utility z-dropdown {
+  z-index: 40;
+}
+@utility z-popover {
+  z-index: 45;
+}
+@utility z-overlay {
+  z-index: 50;
+}
+@utility z-dialog {
+  z-index: 55;
+}
+@utility z-toast {
+  z-index: 60;
+}
+@utility z-tooltip {
+  z-index: 70;
+}
+
+/* --------------------------------------------------------------------- base */
+
+@layer base {
+  :root {
+    --header-height: 48px;
+  }
+
+  html {
+    background-color: var(--background);
+    color: var(--foreground);
+    accent-color: var(--accent);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-weight: 300;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+
+  /*
+   * Third-party components ship 500–700 defaults. Anything above 400 is pulled
+   * back so product chrome stays light; hierarchy comes from size, spacing and
+   * contrast instead.
+   */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  th,
+  strong,
+  b,
+  legend,
+  optgroup,
+  summary {
+    font-weight: 400;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    font-weight: inherit;
+    color: inherit;
+  }
+
+  ::selection {
+    background-color: var(--selection);
+  }
+
+  /*
+   * One focus treatment everywhere. Controls may restyle it, but none may
+   * remove it without providing an equivalent.
+   */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::placeholder {
+    color: var(--muted-foreground);
+    opacity: 1;
+  }
+
+  /* Visible, theme-aware, and never hidden outright. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  * {
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+    scrollbar-width: thin;
+  }
+
+  /*
+   * Switching theme must feel instant. Transitioning every colour produces a
+   * visible smear across a dense IDE, so the switch is deliberately abrupt and
+   * only intentional transitions survive it.
+   */
+  html[data-theme-switching] *,
+  html[data-theme-switching] *::before,
+  html[data-theme-switching] *::after {
+    transition: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  /* Comfortable touch targets without inflating dense desktop controls. */
+  @media (pointer: coarse) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+}

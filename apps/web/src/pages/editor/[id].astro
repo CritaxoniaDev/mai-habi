@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+import WorkspaceHeader from '../../islands/WorkspaceHeader';
+import Workspace from '../../islands/Workspace';
+
+/*
+ * Rendered on demand: the project id is arbitrary and every byte of project
+ * data lives in the browser, so there is nothing to prerender per project.
+ */
+export const prerender = false;
+
+const { id } = Astro.params;
+---
+
+<Base title="Editor — Playground" bodyClass="h-screen overflow-hidden">
+  <div class="flex h-screen flex-col">
+    <WorkspaceHeader client:load />
+    <div class="min-h-0 flex-1">
+      <!-- Monaco and the compiler load only here, never on the dashboard. -->
+      <Workspace projectId={id!} client:only="react" />
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,28 @@
+{
+  "name": "mai-habi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser HTML, CSS, JavaScript and React playground with in-browser compilation and a separate viewer module.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @mai-habi/web",
+    "build": "npm run build --workspace @mai-habi/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "node scripts/verify.mjs",
+    "clean": "node -e \"const{rmSync}=require('fs');['node_modules','apps/web/node_modules','apps/web/dist','apps/web/.astro','apps/web/.vercel'].forEach(p=>rmSync(p,{recursive:true,force:true}))\"",
+    "sync:runtime": "node scripts/sync-runtime.mjs",
+    "postinstall": "node scripts/sync-runtime.mjs",
+    "prebuild": "node scripts/sync-runtime.mjs",
+    "preview": "npm run preview --workspace @mai-habi/web"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.3"
+  }
+}

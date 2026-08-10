@@ -1,0 +1,34 @@
+@import 'tailwindcss';
+@import '@mai-habi/ui/theme.css';
+
+/* Class names also live in the shared UI package and in the workspace islands. */
+@source '../../../../packages/ui/src';
+@source '../';
+
+@layer components {
+  .monaco-editor,
+  .xterm {
+    font-family: var(--font-mono);
+  }
+
+  .xterm .xterm-viewport {
+    background-color: transparent !important;
+  }
+
+  /*
+   * Monaco ships 600/700 rules for its own chrome — suggestion widgets, the
+   * quick-input list, parameter hints. Those are product surfaces as far as a
+   * user is concerned, so they are pulled back to 400. Tokenised code is
+   * untouched: the theme sets no bold font styles.
+   */
+  .monaco-editor .suggest-widget .monaco-highlighted-label .highlight,
+  .monaco-editor .parameter-hints-widget .signature .parameter.active,
+  .monaco-editor .parameter-hints-widget .documentation-parameter > .parameter,
+  .monaco-editor .monaco-icon-label::after,
+  .monaco-editor .action-widget .monaco-list-row.group-header,
+  .monaco-table-th,
+  .quick-input-widget .monaco-highlighted-label .highlight,
+  .quick-input-list .quick-input-list-separator-as-item .label-name {
+    font-weight: 400;
+  }
+}

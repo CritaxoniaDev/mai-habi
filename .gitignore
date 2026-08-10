@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.astro/
+.vercel/
+.turbo/
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# staged from node_modules by scripts/sync-runtime.mjs
+apps/web/public/runtime/
+apps/web/public/wasm/
+apps/web/public/types/

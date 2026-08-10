@@ -1,0 +1,16 @@
+---
+import Base from '../../layouts/Base.astro';
+import ViewerShell from '../../islands/ViewerShell';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+---
+
+<!--
+  The viewer is its own module: no explorer, no Monaco, no console. It resolves
+  the project, compiles it in the visitor's browser and renders the result.
+-->
+<Base title="Viewer — Playground">
+  <ViewerShell id={id!} client:only="react" />
+</Base>
