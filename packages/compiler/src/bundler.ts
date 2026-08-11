@@ -24,8 +24,51 @@ const LOADERS: Record<string, Loader> = {
   '.html': 'text',
   '.htm': 'text',
   '.txt': 'text',
-  '.svg': 'text',
 };
+
+/**
+ * Files carried through the project as base64 rather than text.
+ *
+ * They are inlined as data URIs, which is what lets `import logo from
+ * './logo.png'`, `url('./logo.png')` in CSS and `<img src="./logo.png">` all
+ * work with no server and no asset pipeline.
+ */
+const BASE64_ASSETS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.avif',
+  '.ico',
+  '.bmp',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.otf',
+  '.mp4',
+  '.webm',
+  '.mp3',
+  '.wav',
+  '.ogg',
+]);
+
+/** SVG is stored as text but behaves like an image once it is referenced. */
+function isAssetExtension(extension: string): boolean {
+  return BASE64_ASSETS.has(extension) || extension === '.svg';
+}
+
+/** Above this, inlining starts to hurt: a data URI is a third larger again. */
+const LARGE_ASSET_BYTES = 512 * 1024;
+
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
 
 /*
  * React is provided by the platform as real ES modules served from the app
@@ -78,6 +121,11 @@ function normalise(path: string): string {
     else out.push(segment);
   }
   return `/${out.join('/')}`;
+}
+
+/** Resolves a specifier the way an importer inside the project would. */
+function resolveFrom(importer: string, specifier: string): string {
+  return specifier.startsWith('/') ? specifier : `${dirnameOf(importer)}/${specifier}`;
 }
 
 function dirnameOf(path: string): string {
@@ -199,9 +247,14 @@ function inlineScript(source: string, module: boolean): string {
  * sandboxed preview, retaining body classes, inline styles and ordinary head
  * elements without evaluating user code in the editor itself.
  */
-export function htmlEntryModule(html: string): string {
+export function htmlEntryModule(
+  html: string,
+  /** Whether a local reference exists in the project; missing ones are left alone. */
+  resolves: (specifier: string) => boolean = () => true,
+): string {
   const scripts: HtmlScript[] = [];
   const stylesheets: string[] = [];
+  const assets: string[] = [];
 
   let documentSource = html.replace(
     /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi,
@@ -227,9 +280,34 @@ export function htmlEntryModule(html: string): string {
     return '';
   });
 
-  const imports = [...new Set(stylesheets)]
-    .map((specifier) => `import ${JSON.stringify(specifier)};`)
-    .join('\n');
+  /*
+   * `<img src="./logo.png">` cannot resolve inside the preview: the document has
+   * an opaque origin and no base URL. Each local reference becomes an import,
+   * which the asset loader turns into a data URI, and the attribute is swapped
+   * for a token that is substituted once those imports have resolved.
+   */
+  documentSource = documentSource.replace(
+    /(<(?:img|source|video|audio|track|embed)\b[^>]*?\s(?:src|poster)\s*=\s*)(["'])([^"']+)\2/gi,
+    (markup, head: string, quote: string, value: string) => {
+      const specifier = localSpecifier(value);
+      if (!specifier || !resolves(specifier)) return markup;
+
+      let index = assets.indexOf(specifier);
+      if (index === -1) index = assets.push(specifier) - 1;
+
+      return `${head}${quote}__mai_habi_asset_${index}__${quote}`;
+    },
+  );
+
+  const imports = [
+    ...[...new Set(stylesheets)].map((specifier) => `import ${JSON.stringify(specifier)};`),
+    ...assets.map((specifier, index) => `import __asset${index} from ${JSON.stringify(specifier)};`),
+  ].join('\n');
+
+  const substitution = assets.length
+    ? `\nconst assets = [${assets.map((_, index) => `__asset${index}`).join(', ')}];` +
+      '\nsource = source.replace(/__mai_habi_asset_(\\d+)__/g, (_, index) => assets[Number(index)]);'
+    : '';
 
   const executions = scripts
     .map((script) => {
@@ -245,7 +323,7 @@ export function htmlEntryModule(html: string): string {
 
   return `${imports}
 
-const source = ${JSON.stringify(documentSource)};
+let source = ${JSON.stringify(documentSource)};${substitution}
 const parsed = new DOMParser().parseFromString(source, 'text/html');
 
 for (const attribute of parsed.documentElement.attributes) {
@@ -318,12 +396,41 @@ export function virtualFilesystem(files: Record<string, string>, entry: string):
         }
 
         const extension = extnameOf(args.path);
+
+        // Images, fonts and media become data URIs, so they need real bytes.
+        if (isAssetExtension(extension)) {
+          const bytes = BASE64_ASSETS.has(extension)
+            ? decodeBase64(contents)
+            : new TextEncoder().encode(contents);
+
+          return {
+            contents: bytes,
+            loader: 'dataurl',
+            resolveDir: dirnameOf(args.path),
+            warnings:
+              bytes.length > LARGE_ASSET_BYTES
+                ? [
+                    {
+                      text:
+                        `"${toKey(args.path)}" is ${Math.round(bytes.length / 1024)} KB and is ` +
+                        'inlined into the build. Large assets slow every reload — consider a ' +
+                        'smaller file or an absolute URL.',
+                    },
+                  ]
+                : undefined,
+          };
+        }
+
         const htmlEntry =
           (extension === '.html' || extension === '.htm') &&
           normalise(args.path) === normalise(entry);
 
         return {
-          contents: htmlEntry ? htmlEntryModule(contents) : contents,
+          contents: htmlEntry
+            ? htmlEntryModule(contents, (specifier) =>
+                Boolean(resolveInProject(files, resolveFrom(args.path, specifier))),
+              )
+            : contents,
           loader: htmlEntry ? 'js' : (LOADERS[extension] ?? 'text'),
           resolveDir: dirnameOf(args.path),
         };

@@ -43,11 +43,33 @@ export function withDirectories(files: FileMap): FileMap {
   return out;
 }
 
+/*
+ * Duplicated from the filesystem package on purpose: that package already
+ * depends on this one, and a cycle costs more than one list.
+ */
+const BINARY_EXTENSIONS = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.ico', '.bmp',
+  '.woff', '.woff2', '.ttf', '.otf', '.eot',
+  '.mp4', '.webm', '.mov', '.mp3', '.wav', '.ogg',
+  '.pdf', '.zip', '.gz', '.wasm',
+]);
+
+function isBinary(path: string): boolean {
+  const index = path.lastIndexOf('.');
+  return index > 0 && BINARY_EXTENSIONS.has(path.slice(index).toLowerCase());
+}
+
 export function filesFromRecord(record: Record<string, string>): FileMap {
   const files: FileMap = {};
+
   for (const [path, content] of Object.entries(record)) {
-    files[path] = textFile(path, content);
+    // A shared or restored project must come back as the encoding it left as,
+    // or an image would be revived as a wall of base64 text.
+    files[path] = isBinary(path)
+      ? { path, type: 'file', content, encoding: 'base64', size: Math.floor((content.length * 3) / 4) }
+      : textFile(path, content);
   }
+
   return withDirectories(files);
 }
 
@@ -107,10 +129,17 @@ export function touchProject(project: Project): Project {
 }
 
 /** Text-only view of a project, which is all the compiler and viewer need. */
+/**
+ * Flat view of a project for the compiler, the viewer and share links.
+ *
+ * Binary files travel as raw base64 under their own path. Nothing marks them as
+ * such: both ends decide from the extension, which is the same rule the
+ * filesystem used when it stored them.
+ */
 export function toSourceMap(files: FileMap): Record<string, string> {
   const out: Record<string, string> = {};
   for (const node of Object.values(files)) {
-    if (node.type !== 'file' || node.encoding !== 'utf8') continue;
+    if (node.type !== 'file') continue;
     out[node.path] = node.content;
   }
   return out;
