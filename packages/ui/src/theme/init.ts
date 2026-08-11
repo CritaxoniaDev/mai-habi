@@ -8,14 +8,29 @@ import { THEME_STORAGE_KEY } from './controller';
  * string rather than a module because it has to execute synchronously, ahead of
  * any bundle.
  */
-export const THEME_INIT_SCRIPT = `(function(){
-var m='system';
-try{m=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})||'system'}catch(_){}
-if(m!=='light'&&m!=='dark')m='system';
-var d=m==='dark'||(m==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
-var e=document.documentElement;
-e.classList.add(d?'dark':'light');
-e.style.colorScheme=d?'dark':'light';
-e.dataset.themeMode=m;
-e.dataset.theme=d?'dark':'light';
-})();`;
+export const THEME_INIT_SCRIPT = `
+  (function () {
+    var mode = "system";
+
+    try {
+      mode =
+        localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)}) || "system";
+    } catch (_) {}
+
+    if (mode !== "light" && mode !== "dark") {
+      mode = "system";
+    }
+
+    var isDark =
+      mode === "dark" ||
+      (mode === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+    var root = document.documentElement;
+
+    root.classList.add(isDark ? "dark" : "light");
+    root.style.colorScheme = isDark ? "dark" : "light";
+    root.dataset.themeMode = mode;
+    root.dataset.theme = isDark ? "dark" : "light";
+  })();
+`;

@@ -1,3 +1,4 @@
+import { PUBLIC_PACKAGES } from '@mai-habi/compiler';
 import {
   Dialog,
   DialogContent,
@@ -165,11 +166,26 @@ export function SettingsDialog() {
           <Separator />
 
           <section className={cn('space-y-2')}>
-            <SectionHeading>Dependencies</SectionHeading>
+            <SectionHeading>Packages</SectionHeading>
             <p className="text-label font-light text-muted-foreground">
-              React and ReactDOM are provided by the platform. This playground has no npm registry,
-              so other packages cannot be imported — an import of anything else is reported as a
-              compile error.
+              These are provided by the platform — import them without installing anything. Each is
+              downloaded only when a project actually uses it.
+            </p>
+
+            <ul className="flex flex-wrap gap-1.5 pt-1">
+              {PUBLIC_PACKAGES.map((name) => (
+                <li
+                  key={name}
+                  className="rounded-full border border-border px-2 py-0.5 font-mono text-micro font-light text-foreground-secondary"
+                >
+                  {name}
+                </li>
+              ))}
+            </ul>
+
+            <p className="text-label font-light text-muted-foreground">
+              There is no npm registry here, so anything else is reported as a compile error rather
+              than failing at runtime.
             </p>
           </section>
         </div>

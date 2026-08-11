@@ -8,6 +8,7 @@
  */
 
 import vm from 'node:vm';
+import { existsSync, readFileSync } from 'node:fs';
 import { build as nodeBuild } from 'esbuild';
 import { registerDesignChecks } from './design-checks.mjs';
 
@@ -313,15 +314,175 @@ check('surfaces syntax errors with a location', async () => {
   }
 });
 
-check('only react and react-dom are importable', () => {
-  const allowed = Object.keys(runtime.ALLOWED_PACKAGES).sort();
+const LIBRARY_PROJECT = {
+  'src/main.tsx': `import { createRoot } from 'react-dom/client';
+import App from './App';
+const root = document.getElementById('root');
+if (root) createRoot(root).render(<App />);
+`,
+  'src/App.tsx': `import { motion, AnimatePresence } from 'framer-motion';
+import { ReactLenis } from 'lenis/react';
+import clsx from 'clsx';
+import { create } from 'zustand';
+
+const useStore = create<{ open: boolean; toggle: () => void }>((set) => ({
+  open: false,
+  toggle: () => set((state) => ({ open: !state.open })),
+}));
+
+export default function App() {
+  const { open, toggle } = useStore();
+
   return (
-    allowed.every((name) => name.startsWith('react') || name === 'scheduler') &&
-    runtime.isAllowedPackage('react') &&
-    runtime.isAllowedPackage('react-dom/client') &&
-    !runtime.isAllowedPackage('axios') &&
-    !runtime.isAllowedPackage('lodash')
+    <ReactLenis root>
+      <button className={clsx('btn', open && 'btn-open')} onClick={toggle}>
+        Toggle
+      </button>
+      <AnimatePresence>
+        {open && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} />}
+      </AnimatePresence>
+    </ReactLenis>
   );
+}
+`,
+};
+
+check('compiles a project using the curated libraries', async () => {
+  const result = await compileFixture(LIBRARY_PROJECT, 'src/main.tsx');
+  if (!result.ok) throw new Error(result.errors.join('; '));
+  return result.js.includes('AnimatePresence') && result.js.includes('ReactLenis');
+});
+
+check('libraries stay external rather than being bundled in', async () => {
+  const result = await compileFixture(LIBRARY_PROJECT, 'src/main.tsx');
+  return (
+    result.ok &&
+    /from\s*"framer-motion"/.test(result.js) &&
+    /from\s*"lenis\/react"/.test(result.js) &&
+    /from\s*"zustand"/.test(result.js) &&
+    // The implementations belong to the platform, not to a user's bundle.
+    !result.js.includes('createAnimationsFromSequence') &&
+    result.js.length < 8000
+  );
+});
+
+const PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+const IMAGE_PROJECT = {
+  'src/main.tsx': `import { createRoot } from 'react-dom/client';
+import logo from './assets/logo.png';
+import './styles.css';
+const root = document.getElementById('root');
+if (root) createRoot(root).render(<img src={logo} alt="" />);
+`,
+  'src/styles.css': ".hero { background-image: url('./assets/logo.png'); }",
+  'src/assets/logo.png': PNG_BASE64,
+};
+
+check('an image import becomes a data URI', async () => {
+  const result = await compileFixture(IMAGE_PROJECT, 'src/main.tsx');
+  if (!result.ok) throw new Error(result.errors.join('; '));
+  return result.js.includes('data:image/png;base64,');
+});
+
+check('css url() references resolve to the same asset', async () => {
+  const result = await compileFixture(IMAGE_PROJECT, 'src/main.tsx');
+  return result.ok && result.css.includes('data:image/png;base64,');
+});
+
+check('an image is never emitted as raw base64 text', async () => {
+  const result = await compileFixture(IMAGE_PROJECT, 'src/main.tsx');
+  // The bytes must arrive decoded and re-encoded by the loader, not pasted in.
+  return result.ok && !result.js.includes("'" + PNG_BASE64 + "'");
+});
+
+check('html img tags are rewritten to embedded assets', async () => {
+  const html = {
+    'index.html':
+      '<!doctype html><html><body><img src="./photo.png" alt="">' +
+      '<img src="https://example.com/remote.png" alt=""></body></html>',
+    'photo.png': PNG_BASE64,
+  };
+
+  const result = await compileFixture(html, 'index.html');
+  if (!result.ok) throw new Error(result.errors.join('; '));
+
+  return (
+    result.js.includes('data:image/png;base64,') &&
+    // A remote image is left exactly as the author wrote it.
+    result.js.includes('https://example.com/remote.png')
+  );
+});
+
+check('a missing html image is left alone rather than failing the build', async () => {
+  const result = await compileFixture(
+    { 'index.html': '<!doctype html><html><body><img src="./gone.png"></body></html>' },
+    'index.html',
+  );
+  return result.ok && result.js.includes('./gone.png');
+});
+
+check('a large asset compiles but warns', async () => {
+  const big = 'A'.repeat(900 * 1024);
+  const result = await nodeBuild(
+    bundler.createBuildOptions({
+      files: { 'a.tsx': "import img from './big.png';\nexport default img;", 'big.png': big },
+      entry: 'a.tsx',
+      minify: false,
+    }),
+  );
+  return (result.warnings ?? []).some((warning) => warning.text.includes('inlined into the build'));
+});
+
+check('a project snapshot keeps images binary on the way back', () => {
+  const files = shared.filesFromRecord({ 'src/App.tsx': 'export default null;', 'logo.png': PNG_BASE64 });
+  return files['logo.png'].encoding === 'base64' && files['src/App.tsx'].encoding === 'utf8';
+});
+
+check('images survive the round trip through a source map', () => {
+  const files = shared.filesFromRecord({ 'logo.png': PNG_BASE64 });
+  return shared.toSourceMap(files)['logo.png'] === PNG_BASE64;
+});
+
+check('the import whitelist is exactly the curated shelf', () => {
+  const allowed = new Set(Object.keys(runtime.ALLOWED_PACKAGES));
+
+  for (const name of ['react', 'react-dom/client', 'motion/react', 'framer-motion', 'lenis', 'clsx', 'zustand']) {
+    if (!allowed.has(name)) throw new Error(`${name} should be importable`);
+  }
+  for (const name of ['axios', 'lodash', 'three', 'gsap']) {
+    if (allowed.has(name)) throw new Error(`${name} should not be importable`);
+  }
+
+  return true;
+});
+
+check('every allowed package is staged into /runtime', () => {
+  for (const [name, url] of Object.entries(runtime.ALLOWED_PACKAGES)) {
+    const file = 'apps/web/public' + url;
+    if (!existsSync(file)) throw new Error(`${name} points at a missing file: ${url}`);
+  }
+  return true;
+});
+
+check('framer-motion and motion/react are the same module', () =>
+  runtime.ALLOWED_PACKAGES['framer-motion'] === runtime.ALLOWED_PACKAGES['motion/react']);
+
+check('the rejection message lists what is available', () => {
+  const message = runtime.unsupportedImportMessage('axios');
+  return (
+    message.includes('"axios"') &&
+    message.includes('framer-motion') &&
+    message.includes('react') &&
+    // Internal plumbing is not something anyone imports on purpose.
+    !message.includes('scheduler')
+  );
+});
+
+check('an unknown subpath of a known package is reported differently', () => {
+  const message = runtime.unsupportedImportMessage('motion/nope');
+  return message.includes('motion/react') && !message.includes('not available in this playground');
 });
 
 /* ---------------------------------------------------------- the preview runtime */
@@ -415,6 +576,33 @@ check('every template compiles', async () => {
   return true;
 });
 
+check('the motion template demonstrates the provided libraries', async () => {
+  const template = shared.getTemplate('react-motion');
+  const source = Object.values(template.files).join('\n');
+
+  for (const specifier of ['framer-motion', 'lenis/react', 'clsx']) {
+    if (!source.includes(specifier)) throw new Error(`the sample never imports ${specifier}`);
+  }
+
+  // And it has to actually build, not merely mention them.
+  const result = await compileFixture(template.files, template.settings.entryFile);
+  if (!result.ok) throw new Error(result.errors.join('; '));
+
+  return result.js.includes('AnimatePresence') && result.js.includes('ReactLenis');
+});
+
+check('starter samples show a local component import', () => {
+  for (const id of ['react-ts', 'react-js']) {
+    const template = shared.getTemplate(id);
+    const app = template.files[id === 'react-ts' ? 'src/App.tsx' : 'src/App.jsx'];
+    const component = id === 'react-ts' ? 'src/components/Counter.tsx' : 'src/components/Counter.jsx';
+
+    if (!app.includes('./components/Counter')) throw new Error(`${id} does not import a component`);
+    if (!template.files[component]) throw new Error(`${id} is missing ${component}`);
+  }
+  return true;
+});
+
 check('templates declare an entry file that exists', () =>
   shared.TEMPLATES.every((template) => template.files[template.settings.entryFile] !== undefined));
 
@@ -430,6 +618,170 @@ check('created projects materialise directories', () => {
     guestId: 'guest_x',
   });
   return files.src.type === 'directory' && project.settings.entryFile === 'src/main.tsx';
+});
+
+/* ------------------------------------------------------------------ import */
+
+const { zipSync, strToU8 } = await import('fflate');
+
+const archive = () =>
+  zipSync({
+    "widget/index.html": strToU8("<h1>hi</h1>"),
+    "widget/assets/logo.svg": strToU8("<svg/>"),
+  });
+
+check('a wrapping folder is dropped when an import becomes the project', async () => {
+  const result = await fs.importFromZip(archive());
+  return Boolean(result.files["index.html"] && result.files["assets/logo.svg"]);
+});
+
+check('structure is kept when merging into an existing folder', async () => {
+  const result = await fs.importFromZip(archive(), { stripRoot: false });
+  return Boolean(result.files["widget/index.html"] && result.files["widget/assets/logo.svg"]);
+});
+
+check('imported directories come back as directory nodes', async () => {
+  const result = await fs.importFromZip(archive(), { stripRoot: false });
+  return result.files["widget/assets"]?.type === "directory";
+});
+
+check('an imported binary keeps its base64 encoding', async () => {
+  const zip = zipSync({ "pack/logo.png": new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]) });
+  const result = await fs.importFromZip(zip, { stripRoot: false });
+  return result.files["pack/logo.png"].encoding === "base64";
+});
+
+/* ----------------------------------------------------------- explorer icons */
+
+/**
+ * `file-icons.tsx` imports React components, so the icon library and the UI
+ * package are stubbed out. The classification itself is plain data and is what
+ * matters here.
+ */
+const stubIcons = {
+  name: 'stub-icons',
+  setup(build) {
+    build.onResolve({ filter: /^(lucide-react|@mai-habi\/ui)$/ }, (args) => ({
+      path: args.path,
+      namespace: 'stub',
+    }));
+    // CommonJS on purpose: esbuild then resolves named imports at runtime, so
+    // the stub does not have to enumerate every icon the module happens to use.
+    build.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({
+      contents: `module.exports = new Proxy(
+         {},
+         {
+           get: (_, name) =>
+             name === 'cn'
+               ? (...parts) => parts.filter(Boolean).join(' ')
+               : function StubIcon() { return null; },
+         },
+       );`,
+      loader: 'js',
+    }));
+  },
+};
+
+const icons = await (async () => {
+  const bundle = await nodeBuild({
+    entryPoints: ['apps/web/src/lib/file-icons.tsx'],
+    bundle: true,
+    format: 'esm',
+    write: false,
+    platform: 'neutral',
+    mainFields: ['module', 'main'],
+    jsx: 'transform',
+    jsxFactory: 'h',
+    jsxFragment: 'Fragment',
+    logLevel: 'silent',
+    plugins: [stubIcons],
+  });
+
+  return import(
+    `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`
+  );
+})();
+
+const toneOf = (path) => icons.fileKind(path).tone;
+
+check('tsx and jsx share the React accent', () =>
+  toneOf('src/App.tsx') === 'text-lang-react' && toneOf('src/App.jsx') === 'text-lang-react');
+
+check('plain typescript is distinct from a component', () =>
+  toneOf('src/util.ts') === 'text-lang-typescript' &&
+  toneOf('src/util.ts') !== toneOf('src/App.tsx'));
+
+check('javascript, css, html and json each get their own accent', () => {
+  const tones = ['a.js', 'a.css', 'a.html', 'a.json'].map(toneOf);
+  return new Set(tones).size === 4;
+});
+
+check('images are recognised, including svg', () =>
+  toneOf('logo.png') === 'text-lang-image' && toneOf('logo.svg') === 'text-lang-image');
+
+check('known filenames beat their extension', () =>
+  toneOf('package.json') === 'text-lang-config' &&
+  toneOf('tsconfig.json') === 'text-lang-config' &&
+  toneOf('data.json') === 'text-lang-json');
+
+check('dotfiles and env files read as configuration', () =>
+  toneOf('.env') === 'text-lang-config' &&
+  toneOf('.env.local') === 'text-lang-config' &&
+  toneOf('.gitignore') === 'text-lang-config');
+
+check('an unknown extension falls back to a neutral file', () =>
+  toneOf('notes.xyz') === 'text-muted-foreground');
+
+check('languages use a real logo, other categories use a glyph', () => {
+  const withLogo = ['a.tsx', 'a.ts', 'a.js', 'a.css', 'a.html', 'a.json', 'a.md'];
+  const withGlyph = ['a.png', '.env', 'a.xyz'];
+
+  for (const path of withLogo) {
+    if (!icons.fileKind(path).logo) throw new Error(`${path} has no language logo`);
+  }
+  for (const path of withGlyph) {
+    if (icons.fileKind(path).logo) throw new Error(`${path} should not claim a language logo`);
+  }
+
+  return true;
+});
+
+check('every referenced logo exists in the generated paths', () => {
+  const generated = readFileSync('apps/web/src/lib/language-logos.ts', 'utf8');
+  const samples = ['a.tsx', 'a.ts', 'a.js', 'a.css', 'a.html', 'a.json', 'a.md'];
+
+  for (const path of samples) {
+    const { logo } = icons.fileKind(path);
+    // The generator writes `key: 'M…'`, so the key must appear followed by a path.
+    if (!new RegExp(`\\n  ${logo}: 'M`).test(generated)) {
+      throw new Error(`language-logos.ts has no path for "${logo}"`);
+    }
+  }
+
+  return true;
+});
+
+check('classification ignores the folder path', () =>
+  toneOf('deep/nested/path/App.tsx') === toneOf('App.tsx'));
+
+check('every icon tone maps to a token defined in both themes', () => {
+  const css = readFileSync('packages/ui/src/theme.css', 'utf8');
+  const samples = [
+    'a.tsx', 'a.ts', 'a.js', 'a.css', 'a.html', 'a.json', 'a.md', 'a.png', '.env', 'a.xyz',
+  ];
+
+  for (const tone of new Set(samples.map(toneOf))) {
+    const token = tone.replace(/^text-/, '--');
+    if (token === '--muted-foreground') continue;
+
+    const light = new RegExp(`\\n  ${token}:`).test(css);
+    const dark = new RegExp(`\\n  ${token}:[^;]+;`, 'g');
+    if (!light || (css.match(dark) ?? []).length < 2) {
+      throw new Error(`${token} is not defined in both themes`);
+    }
+  }
+
+  return true;
 });
 
 /* ------------------------------------------- theme, contrast and typography */

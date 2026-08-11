@@ -43,6 +43,18 @@ const MANIFESTS: Array<[virtualPath: string, contents: string]> = [
   ],
 ];
 
+/**
+ * Asset imports resolve to a data URI string at build time, so the editor is
+ * told the same thing: `import logo from './logo.png'` is a string.
+ */
+const ASSET_MODULES = [
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'ico', 'bmp', 'svg',
+  'woff', 'woff2', 'ttf', 'otf',
+  'mp4', 'webm', 'mp3', 'wav', 'ogg',
+]
+  .map((extension) => `declare module '*.${extension}' {\n  const source: string;\n  export default source;\n}`)
+  .join('\n\n');
+
 let loaded: Promise<void> | null = null;
 
 export function loadReactTypes(instance: typeof monaco): Promise<void> {
@@ -52,6 +64,8 @@ export function loadReactTypes(instance: typeof monaco): Promise<void> {
     const defaults = instance.languages.typescript.typescriptDefaults;
 
     for (const [path, contents] of MANIFESTS) defaults.addExtraLib(contents, path);
+
+    defaults.addExtraLib(ASSET_MODULES, 'file:///mai-habi/assets.d.ts');
 
     const sources = await Promise.all(
       TYPE_FILES.map(async ([url, virtualPath]) => {

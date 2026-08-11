@@ -1,4 +1,4 @@
-# mai-habi
+# HABI
 
 A browser code playground. Write HTML, CSS and JavaScript or build with React
 and TypeScript, compile it **in your own browser**, and share the result with a
@@ -19,40 +19,53 @@ static files.
 
 ## Layout
 
+Three deployments, one repository. They are separate so a visitor reading the
+landing page never downloads the editor, and a reader of the docs downloads
+neither.
+
 ```
 mai-habi/
-├── apps/web/                  One Astro app, two modules
-│   ├── src/pages/             /  ·  /editor/[id]  ·  /view/[id]
-│   ├── src/islands/           Hydration roots
-│   ├── src/components/        Their internals
-│   ├── src/workers/           compiler.worker.ts
-│   ├── src/lib/               compile, share, monaco types, shortcuts
-│   └── public/                Generated: wasm/, runtime/, types/
+├── apps/
+│   ├── web/                   The playground: /editor/[id] and /view/[id]
+│   │   ├── src/islands/       Hydration roots
+│   │   ├── src/workers/       compiler.worker.ts
+│   │   └── public/            Generated: wasm/, runtime/, types/
+│   ├── marketing/             habi.app — the landing page, no React at all
+│   └── docs/                  Starlight documentation
 ├── packages/
 │   ├── types/                 Project schema
 │   ├── compiler/              esbuild-wasm bundler, preview document, protocol
 │   ├── filesystem/            Virtual filesystem, import/export, detection
 │   ├── shared/                IndexedDB, guest identity, templates, Supabase
 │   └── ui/                    Design system and theme controller
-├── scripts/                   sync-runtime.mjs, verify.mjs, design-checks.mjs
+├── scripts/                   sync-runtime, verify, design-checks, docs typography
 └── supabase/schema.sql
 ```
 
+| App | Port | What it is |
+| --- | --- | --- |
+| `apps/web` | 4321 | Editor and viewer |
+| `apps/marketing` | 4322 | Landing page |
+| `apps/docs` | 4323 | Documentation |
+
 Packages are consumed as TypeScript source through npm workspaces, so there is
-no build step between them and the app.
+no build step between them and the apps.
 
 ## Getting started
 
 ```bash
 npm install          # also stages the browser runtime into public/
-npm run dev          # http://localhost:4321
+npm run dev          # the playground,     http://localhost:4321
+npm run dev:marketing #                    http://localhost:4322
+npm run dev:docs     #                     http://localhost:4323
 ```
 
 ```bash
-npm run build        # builds the app
+npm run build        # builds all three apps
 npm run typecheck    # astro check
 npm run verify       # compiler, filesystem, preview, contrast and design audit
 npm run sync:runtime # re-stage React / esbuild.wasm / Tailwind after upgrades
+npm run sync:icons   # regenerate the language logos from simple-icons
 ```
 
 > `astro preview` is not supported with the Vercel adapter. Use `npm run dev`.
@@ -74,16 +87,18 @@ script sources are resolved against the virtual filesystem, CSS is bundled, and
 JavaScript runs after the document body has been created. This supports ordinary
 `index.html` + `styles.css` + `script.js` projects without a framework.
 
-**React is provided by the platform.** `react`, `react-dom`, `react-dom/client`
-and `react/jsx-runtime` are marked external and served as real ES modules from
-`/runtime`, wired up with an import map in the preview. The browser caches them
-once; a user's bundle stays a few kilobytes and holds a single React instance.
+**Packages are provided by the platform.** React, `motion`/`framer-motion`,
+`lenis`, `clsx` and `zustand` are marked external and served as real ES modules
+from `/runtime`, wired up with an import map in the preview. They are built in a
+single pass with code splitting, so every library that needs React shares the
+same React chunk — two copies is how hooks start throwing. Each module is fetched
+only when a project imports it, and cached by the browser after that.
 
 Anything else is refused, deliberately:
 
 ```
 External package "axios" is not available in this playground.
-Only react and react-dom are provided.
+Available packages: react, react-dom, motion, framer-motion, lenis, clsx, zustand.
 ```
 
 There is no registry, no `node_modules` and no install step, and the console
@@ -94,6 +109,35 @@ shell.
 of `node_modules` at install time: `esbuild.wasm`, the React ES modules (built
 with code splitting so `react-dom/client` and your `import React` share one
 chunk), Tailwind's browser build, and React's `.d.ts` files for Monaco.
+
+## File-type icons
+
+The explorer shows each language's real mark — the React atom, the TypeScript
+and JavaScript squares, the CSS and HTML5 shields, the JSON and Markdown logos.
+
+simple-icons ships those as raw SVGs alongside a five-megabyte JavaScript index,
+so [`scripts/sync-icons.mjs`](scripts/sync-icons.mjs) extracts only the seven
+paths in use into a generated module. That file is committed, so the app builds
+without simple-icons installed; the package is a devDependency used purely to
+regenerate it.
+
+Colour comes from `--lang-*` tokens rather than the official brand palette.
+JavaScript yellow reads at about 1.2:1 on white and React cyan at 1.4:1 — both
+invisible — so light mode keeps the brand hue and darkens it, while dark mode
+uses the real values where they work. Every one clears 3:1 against the surfaces
+it sits on, in both themes, and `npm run verify` computes that.
+
+## Images and assets
+
+Drop an image into the file tree and reference it — from an import, from CSS
+`url()`, or from `<img src>` in an `index.html` project. Each referenced file
+is inlined into the build as a `data:` URI, so a share link carries its own
+images and needs no asset host.
+
+Binary files travel through the project as base64 under their own path; both the
+store and the compiler decide what is binary from the extension. Above 512 KB the
+compiler warns, because a data URI is a third larger again and is rebuilt into
+the preview on every change.
 
 ## Isolation
 
@@ -154,16 +198,33 @@ Only the anon key ever reaches the browser. RLS stays enabled.
 
 ## Deployment
 
-One Vercel project, root directory `apps/web`, framework Astro. Enable **Include
-source files outside of the Root Directory** so the workspace root is available
-during install, and set `PUBLIC_APP_ORIGIN` to the real domain.
+Three Vercel projects from this one repository, each with its own root
+directory. Enable **Include source files outside of the Root Directory** on all
+of them so the workspace root is available during install.
+
+| Vercel project | Root directory | Suggested domain |
+| --- | --- | --- |
+| Playground | `apps/web` | `app.habi.app` |
+| Marketing | `apps/marketing` | `habi.app` |
+| Docs | `apps/docs` | `docs.habi.app` |
+
+Each app carries its own `vercel.json` with the build command and headers.
+
+Set the origins so the three sites can link to each other:
+
+| Variable | Needed by |
+| --- | --- |
+| `PUBLIC_APP_ORIGIN` | all three |
+| `PUBLIC_DOCS_ORIGIN` | marketing, docs |
+| `PUBLIC_SITE_ORIGIN` | docs |
 
 [`apps/web/vercel.json`](apps/web/vercel.json) sets `Access-Control-Allow-Origin`
 on `/runtime` and `/wasm`: the preview's opaque origin makes those module-script
-requests cross-origin, so they need CORS.
+requests cross-origin, so they need CORS. Carry that across if you deploy
+somewhere other than Vercel — without it the preview cannot load React.
 
-Vercel serves the app, the static runtime and (optionally) authentication. It
-never compiles React, runs npm, or starts a process per user.
+Vercel serves static files and, optionally, authentication. It never compiles
+React, runs npm, or starts a process per user.
 
 ## Appearance
 
@@ -207,11 +268,17 @@ same implementation as the WebAssembly build — so these are end-to-end:
   after the DOM exists; missing linked files produce compiler diagnostics
 - React stays external and is never bundled into a user's output
 - extensionless and directory imports resolve
+- a project using framer-motion, lenis, clsx and zustand compiles, and those
+  libraries stay external rather than being inlined
 - `axios` is rejected by name, deep scoped imports report the package root,
   unresolved relative imports name both files, syntax errors carry a location
 - every starter template compiles
 
-plus the preview document (sandbox flags, `</script>` breakout, import map,
+The docs build additionally fails if any bold type survives into the Starlight
+stylesheet — see [`scripts/check-docs-typography.mjs`](scripts/check-docs-typography.mjs),
+which reads the built CSS rather than trusting the override list.
+
+The rest covers the preview document (sandbox flags, `</script>` breakout, import map,
 Tailwind only when enabled), path-traversal defences, filesystem operations,
 share-link round-trips, and the design audit: WCAG AA contrast computed from the
 tokens in both themes, light/dark token parity, no weight above 400, no raw

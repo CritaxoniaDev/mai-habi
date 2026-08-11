@@ -99,6 +99,12 @@ const TEXT_PAIRS = [
   ['--danger', '--surface'],
   ['--success', '--success-surface'],
   ['--warning', '--warning-surface'],
+
+  // These also carry plain text — the changelog badges — not just icons.
+  ['--success', '--surface'],
+  ['--success', '--background'],
+  ['--warning', '--surface'],
+  ['--warning', '--background'],
 ];
 
 /* Non-text marks: focus rings, decorative glyphs, state boundaries (3:1). */
@@ -107,14 +113,33 @@ const GRAPHIC_PAIRS = [
   ['--focus-ring', '--background'],
   ['--subtle-foreground', '--surface'],
   ['--subtle-foreground', '--background'],
-  ['--success', '--surface'],
-  ['--warning', '--surface'],
+
+  // File-type accents in the explorer, on both surfaces they can sit on.
+  ...[
+    '--lang-react',
+    '--lang-typescript',
+    '--lang-javascript',
+    '--lang-css',
+    '--lang-html',
+    '--lang-json',
+    '--lang-markdown',
+    '--lang-image',
+    '--lang-config',
+  ].flatMap((token) => [
+    [token, '--surface'],
+    [token, '--surface-active'],
+  ]),
 ];
 
 /* ------------------------------------------------------------------- source */
 
 function sourceFiles() {
-  const roots = ['packages/ui/src', 'packages/compiler/src', 'apps/web/src'];
+  const roots = [
+    'packages/ui/src',
+    'packages/compiler/src',
+    'apps/web/src',
+    'apps/marketing/src',
+  ];
   const out = [];
 
   const walk = (dir) => {
@@ -346,8 +371,11 @@ export function registerDesignChecks(check) {
     );
   });
 
-  check('the layout runs the pre-paint script inline', () => {
-    for (const layout of ['apps/web/src/layouts/Base.astro']) {
+  check('every layout runs the pre-paint script inline', () => {
+    for (const layout of [
+      'apps/web/src/layouts/Base.astro',
+      'apps/marketing/src/layouts/Base.astro',
+    ]) {
       const contents = fs.readFileSync(path.join(ROOT, layout), 'utf8');
       if (!contents.includes('is:inline') || !contents.includes('THEME_INIT_SCRIPT')) {
         throw new Error(`${layout} does not inline the theme script`);

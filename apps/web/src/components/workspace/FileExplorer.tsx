@@ -37,8 +37,10 @@ import {
   Pencil,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import { useWorkspace } from '../../state/workspace';
+import { FileTypeIcon } from '../../lib/file-icons';
 
 interface DraftEntry {
   parent: string;
@@ -71,6 +73,18 @@ export function FileExplorer() {
 
   const uploadInput = useRef<HTMLInputElement>(null);
   const uploadTarget = useRef<string>('');
+
+  /**
+   * Opens the file picker for a folder.
+   *
+   * Deferred by a tick because Radix restores focus while the context menu
+   * closes, and a click dispatched inside that cycle never reaches the input —
+   * the dialog simply never appears.
+   */
+  const openUpload = (parent: string) => {
+    uploadTarget.current = parent;
+    setTimeout(() => uploadInput.current?.click(), 0);
+  };
 
   const tree = useMemo(() => buildTree(files), [files]);
   const store = useWorkspace.getState;
@@ -108,14 +122,15 @@ export function FileExplorer() {
       .filter((node) => dirname(node.path) === parent && node.path !== exclude)
       .map((node) => basename(node.path));
 
-  const submitDraft = (name: string) => {
+  /** Returns false to keep the row open when the name cannot be used. */
+  const submitDraft = (name: string): boolean => {
     const entry = draft;
-    if (!entry) return;
+    if (!entry) return true;
 
     const error = validateName(name, siblingsOf(entry.parent));
     if (error) {
       toast.error(error);
-      return;
+      return false;
     }
 
     setDraft(null);
@@ -131,18 +146,20 @@ export function FileExplorer() {
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Could not create that.');
     }
+
+    return true;
   };
 
-  const submitRename = (path: string, name: string) => {
+  const submitRename = (path: string, name: string): boolean => {
     if (name.trim() === basename(path)) {
       setRenaming(null);
-      return;
+      return true;
     }
 
     const error = validateName(name, siblingsOf(dirname(path), path));
     if (error) {
       toast.error(error);
-      return;
+      return false;
     }
 
     setRenaming(null);
@@ -152,6 +169,8 @@ export function FileExplorer() {
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Could not rename that.');
     }
+
+    return true;
   };
 
   const beginCreate = (parent: string, type: 'file' | 'directory') => {
@@ -199,7 +218,7 @@ export function FileExplorer() {
 
     if (event.dataTransfer.items.length === 0) return;
 
-    void importFromDataTransfer(event.dataTransfer)
+    void importFromDataTransfer(event.dataTransfer, { stripRoot: false })
       .then((result) => mergeImported(result.files, parent, result.warnings))
       .catch((cause) => toast.error('Import failed', { description: String(cause) }));
   };
@@ -274,11 +293,15 @@ export function FileExplorer() {
     }
   };
 
-  const renderNode = (node: TreeNode, depth: number) => {
+  const renderNode = (node: TreeNode, ancestors: boolean[], isLast: boolean) => {
     const isOpen = expanded[node.path] ?? false;
     const isOpenFile = activeTab === node.path;
     const isSelected = selected === node.path;
-    const indent = 8 + depth * 12;
+    const depth = ancestors.length;
+
+    // A draft row is appended after the real children, so it takes the elbow.
+    const hasDraft = draft?.parent === node.path;
+    const children = node.children ?? [];
 
     const row = (
       <div
@@ -296,9 +319,12 @@ export function FileExplorer() {
           event.dataTransfer.effectAllowed = 'move';
         }}
         onDragOver={(event) => {
-          if (node.type !== 'directory') return;
+          // Both kinds accept a drop; a file stands in for its own folder.
           event.preventDefault();
-          setDragOver(node.path);
+          // The container behind also handles dragover, and would otherwise
+          // win and highlight the project root instead of this row.
+          event.stopPropagation();
+          setDragOver(node.type === 'directory' ? node.path : dirname(node.path));
         }}
         onDragLeave={() => setDragOver((current) => (current === node.path ? null : current))}
         onDrop={(event) =>
@@ -312,19 +338,22 @@ export function FileExplorer() {
             store().openFile(node.path);
           }
         }}
-        style={{ paddingLeft: indent }}
         className={cn(
-          'group relative flex h-7 cursor-pointer select-none items-center gap-1.5 pr-2 outline-none',
+          'group relative flex h-7 cursor-pointer select-none items-center gap-1 pl-1.5 pr-2 outline-none',
           'text-secondary font-light transition-colors duration-[--duration-fast] ease-[--ease-standard]',
           // The open file stays marked even when the explorer has no focus.
           isOpenFile ? 'bg-surface-active text-foreground' : 'text-foreground-secondary',
           !isOpenFile && 'hover:bg-surface-hover hover:text-foreground',
           isSelected && !isOpenFile && 'bg-surface-hover text-foreground',
           'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
-          dragOver === node.path && 'bg-surface-active ring-1 ring-inset ring-border-strong',
+          dragOver !== null &&
+            dragOver === (node.type === 'directory' ? node.path : dirname(node.path)) &&
+            'bg-surface-active ring-1 ring-inset ring-border-strong',
         )}
       >
         {isOpenFile && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-foreground" />}
+
+        <TreeGuide ancestors={ancestors} isLast={isLast} />
 
         {node.type === 'directory' ? (
           isOpen ? (
@@ -333,7 +362,7 @@ export function FileExplorer() {
             <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           )
         ) : (
-          <FileIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <FileTypeIcon path={node.path} className="size-3.5" />
         )}
 
         {renaming === node.path ? (
@@ -361,12 +390,7 @@ export function FileExplorer() {
                 <ContextMenuItem onSelect={() => beginCreate(node.path, 'directory')}>
                   <FolderPlus /> New folder
                 </ContextMenuItem>
-                <ContextMenuItem
-                  onSelect={() => {
-                    uploadTarget.current = node.path;
-                    uploadInput.current?.click();
-                  }}
-                >
+                <ContextMenuItem onSelect={() => openUpload(node.path)}>
                   <Upload /> Upload files
                 </ContextMenuItem>
               </>
@@ -410,10 +434,14 @@ export function FileExplorer() {
 
         {node.type === 'directory' && isOpen && (
           <>
-            {node.children?.map((child) => renderNode(child, depth + 1))}
-            {draft?.parent === node.path && (
+            {children.map((child, index) =>
+              // A continuation line is drawn for this level only while more
+              // siblings follow, which is what turns │ into blank space.
+              renderNode(child, [...ancestors, !isLast], !hasDraft && index === children.length - 1),
+            )}
+            {hasDraft && draft && (
               <DraftRow
-                depth={depth + 1}
+                ancestors={[...ancestors, !isLast]}
                 type={draft.type}
                 onSubmit={submitDraft}
                 onCancel={() => setDraft(null)}
@@ -440,11 +468,13 @@ export function FileExplorer() {
             onDragLeave={() => setDragOver(null)}
             onDrop={(event) => handleDrop(event, '')}
           >
-            {tree.map((node) => renderNode(node, 0))}
+            {tree.map((node, index) =>
+              renderNode(node, [], draft?.parent !== '' && index === tree.length - 1),
+            )}
 
             {draft?.parent === '' && (
               <DraftRow
-                depth={0}
+                ancestors={[]}
                 type={draft.type}
                 onSubmit={submitDraft}
                 onCancel={() => setDraft(null)}
@@ -459,11 +489,19 @@ export function FileExplorer() {
               multiple
               className="hidden"
               onChange={(event) => {
-                if (!event.target.files) return;
+                const picked = event.target;
+                if (!picked.files?.length) return;
+
                 const parent = uploadTarget.current;
-                void importFromFiles(event.target.files).then((result) =>
-                  mergeImported(result.files, parent, result.warnings),
-                );
+
+                void importFromFiles(picked.files, { stripRoot: false })
+                  .then((result) => mergeImported(result.files, parent, result.warnings))
+                  .catch((cause) => toast.error('Upload failed', { description: String(cause) }))
+                  // Without this the same file cannot be picked twice: the value
+                  // is unchanged, so the browser fires no second change event.
+                  .finally(() => {
+                    picked.value = '';
+                  });
               }}
             />
           </div>
@@ -477,12 +515,7 @@ export function FileExplorer() {
             <FolderPlus /> New folder
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem
-            onSelect={() => {
-              uploadTarget.current = '';
-              uploadInput.current?.click();
-            }}
-          >
+          <ContextMenuItem onSelect={() => openUpload('')}>
             <Upload /> Import files
           </ContextMenuItem>
         </ContextMenuContent>
@@ -517,43 +550,82 @@ export function FileExplorer() {
   );
 }
 
+/**
+ * The connector drawn to the left of every row.
+ *
+ * `ancestors[i]` is true when the folder at that depth still has siblings
+ * below it, which is what decides between a continuation line and blank space.
+ * Purely decorative: the tree itself carries `aria-level`, so this is hidden
+ * from assistive technology rather than read out as box-drawing characters.
+ */
+function TreeGuide({ ancestors, isLast }: { ancestors: boolean[]; isLast: boolean }) {
+  const prefix = ancestors.map((hasMore) => (hasMore ? '│ ' : '  ')).join('');
+
+  return (
+    <span
+      aria-hidden="true"
+      className="shrink-0 whitespace-pre font-mono text-micro text-subtle-foreground"
+    >
+      {`${prefix}${isLast ? '└─' : '├─'}`}
+    </span>
+  );
+}
+
 function DraftRow({
-  depth,
+  ancestors,
   type,
   onSubmit,
   onCancel,
 }: {
-  depth: number;
+  ancestors: boolean[];
   type: 'file' | 'directory';
-  onSubmit: (name: string) => void;
+  onSubmit: (name: string) => boolean;
   onCancel: () => void;
 }) {
   return (
-    <div
-      style={{ paddingLeft: 8 + depth * 12 }}
-      className="flex h-7 items-center gap-1.5 pr-2 text-secondary"
-    >
+    <div className="flex h-7 items-center gap-1 pl-1.5 pr-2 text-secondary">
+      <TreeGuide ancestors={ancestors} isLast />
+
       {type === 'directory' ? (
         <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       ) : (
         <FileIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       )}
-      <InlineInput initial="" onSubmit={onSubmit} onCancel={onCancel} />
+      <InlineInput
+        initial=""
+        placeholder={type === 'directory' ? 'folder name' : 'file name'}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />
     </div>
   );
 }
 
+/**
+ * The name field used for both creating and renaming.
+ *
+ * Three ways out, because a half-typed name should never trap anyone:
+ * Escape, the cancel button, or clicking away without having typed anything.
+ * Clicking away *with* a name commits it, which is what an inline field in a
+ * file tree is expected to do.
+ */
 function InlineInput({
   initial,
+  placeholder,
   onSubmit,
   onCancel,
 }: {
   initial: string;
-  onSubmit: (value: string) => void;
+  placeholder?: string;
+  /** Returns false when the name was rejected and the field should stay open. */
+  onSubmit: (value: string) => boolean;
   onCancel: () => void;
 }) {
   const [value, setValue] = useState(initial);
   const ref = useRef<HTMLInputElement>(null);
+
+  /* Enter and blur can both fire for one interaction; only the first counts. */
+  const settled = useRef(false);
 
   useEffect(() => {
     ref.current?.focus();
@@ -561,24 +633,83 @@ function InlineInput({
     ref.current?.setSelectionRange(0, dot > 0 ? dot : initial.length);
   }, [initial]);
 
+  const cancel = () => {
+    if (settled.current) return;
+    settled.current = true;
+    onCancel();
+  };
+
+  const submit = (viaBlur = false) => {
+    if (settled.current) return;
+    settled.current = true;
+
+    if (onSubmit(value)) return;
+
+    // Rejected. Pressing Enter means "I am done", so stay put and let them fix
+    // it; clicking away means "I have moved on", so discard rather than drag
+    // focus back into a field they deliberately left. Either way the reason was
+    // already reported.
+    if (viaBlur) {
+      onCancel();
+      return;
+    }
+
+    settled.current = false;
+    ref.current?.focus();
+  };
+
   return (
-    <input
-      ref={ref}
-      value={value}
-      aria-label={initial ? `Rename ${initial}` : 'Name'}
-      onChange={(event) => setValue(event.target.value)}
-      onClick={(event) => event.stopPropagation()}
-      onBlur={() => onSubmit(value)}
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (event.key === 'Enter') onSubmit(value);
-        if (event.key === 'Escape') onCancel();
-      }}
-      className={cn(
-        'h-5 w-full min-w-0 rounded-sm border border-border-strong bg-surface px-1',
-        'text-secondary font-light text-foreground outline-none',
-        'focus-visible:outline-1 focus-visible:outline-focus-ring',
-      )}
-    />
+    <span className="flex min-w-0 flex-1 items-center gap-1">
+      <input
+        ref={ref}
+        value={value}
+        placeholder={placeholder}
+        aria-label={initial ? `Rename ${initial}` : 'Name'}
+        title="Enter to confirm, Escape to cancel"
+        onChange={(event) => setValue(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        onBlur={() => {
+          // Nothing typed, or nothing changed: treat leaving as a cancel.
+          if (!value.trim() || value === initial) cancel();
+          else submit(true);
+        }}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            submit();
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            cancel();
+          }
+        }}
+        className={cn(
+          'h-5 w-full min-w-0 rounded-sm border border-border-strong bg-surface px-1',
+          'text-secondary font-light text-foreground outline-none',
+          'placeholder:text-muted-foreground',
+          'focus-visible:outline-1 focus-visible:outline-focus-ring',
+        )}
+      />
+
+      <button
+        type="button"
+        aria-label="Cancel"
+        title="Cancel (Esc)"
+        // Taking focus first would fire blur, which would commit the name.
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={(event) => {
+          event.stopPropagation();
+          cancel();
+        }}
+        className={cn(
+          'grid size-4 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none',
+          'transition-colors duration-[--duration-fast] hover:bg-surface-active hover:text-foreground',
+          'focus-visible:outline-1 focus-visible:outline-focus-ring',
+        )}
+      >
+        <X className="size-3" aria-hidden="true" />
+      </button>
+    </span>
   );
 }

@@ -15,6 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
 const require = createRequire(import.meta.url);
@@ -58,13 +59,27 @@ const WASM_DIR = path.join(PUBLIC, 'wasm');
 const TYPES_DIR = path.join(PUBLIC, 'types');
 const STAGING = path.join(ROOT, 'node_modules/.cache/mai-habi-runtime');
 
-/** Entry name -> module the playground exposes under that specifier. */
+/**
+ * Output name -> module the playground exposes under that specifier.
+ *
+ * Everything here is built in one pass with code splitting, so a library that
+ * needs React shares the very same React chunk a project imports. Two copies
+ * would break hooks in ways that are miserable to debug.
+ */
 const ENTRIES = {
   'react.production': 'react',
   'react-jsx-runtime.production': 'react/jsx-runtime',
   'react-dom.production': 'react-dom',
   'react-dom-client.production': 'react-dom/client',
   'scheduler.production': 'scheduler',
+
+  /* Curated libraries. Adding one here also needs an ALLOWED_PACKAGES entry. */
+  motion: 'motion',
+  'motion-react': 'motion/react',
+  lenis: 'lenis',
+  'lenis-react': 'lenis/react',
+  clsx: 'clsx',
+  zustand: 'zustand',
 };
 
 function copy(from, to, label) {
@@ -75,28 +90,75 @@ function copy(from, to, label) {
   console.log(`  ${path.relative(ROOT, to).replace(/\\/g, '/')}  ${(size / 1024).toFixed(1)} KB`);
 }
 
+/**
+ * True when esbuild will see a real ES module rather than CommonJS.
+ *
+ * It matters because `export *` from CommonJS compiles to a runtime re-export,
+ * which cannot be named statically — that is what silently stripped every React
+ * hook the first time this script was written.
+ */
+function isEsModule(specifier) {
+  const file = fileURLToPath(import.meta.resolve(specifier));
+  if (file.endsWith('.mjs')) return true;
+  if (file.endsWith('.cjs')) return false;
+
+  let dir = path.dirname(file);
+  for (let depth = 0; depth < 6; depth += 1) {
+    const manifest = path.join(dir, 'package.json');
+    if (fs.existsSync(manifest)) {
+      return JSON.parse(fs.readFileSync(manifest, 'utf8')).type === 'module';
+    }
+    dir = path.dirname(dir);
+  }
+
+  return false;
+}
+
+/** Builds the entry stub that re-exports a package under a stable filename. */
+async function stubFor(specifier) {
+  const quoted = JSON.stringify(specifier);
+
+  if (isEsModule(specifier)) {
+    // A namespace import tells us exactly which of the two forms is valid.
+    const namespace = await import(specifier);
+    const named = Object.keys(namespace).filter((key) => key !== 'default');
+    const lines = [];
+
+    if (named.length > 0) lines.push(`export * from ${quoted};`);
+    if (namespace.default !== undefined) lines.push(`export { default } from ${quoted};`);
+    if (lines.length === 0) throw new Error(`"${specifier}" exports nothing`);
+
+    console.log(
+      `  ${specifier}: ${named.length} named` +
+        (namespace.default === undefined ? '' : ' + default') +
+        ' (esm)',
+    );
+
+    return `${lines.join('\n')}\n`;
+  }
+
+  const named = namedExportsOf(specifier);
+  if (named.length === 0) throw new Error(`No named exports found for "${specifier}"`);
+
+  console.log(`  ${specifier}: ${named.length} named (cjs)`);
+
+  return [
+    `import runtime from ${quoted};`,
+    'export default runtime;',
+    `export const { ${named.join(', ')} } = runtime;`,
+    '',
+  ].join('\n');
+}
+
 async function buildReactRuntime() {
   fs.mkdirSync(STAGING, { recursive: true });
 
   const entryPoints = {};
 
   for (const [name, specifier] of Object.entries(ENTRIES)) {
-    const names = namedExportsOf(specifier);
-    if (names.length === 0) throw new Error(`No named exports found for "${specifier}"`);
-
     const file = path.join(STAGING, `${name}.js`);
-    fs.writeFileSync(
-      file,
-      [
-        `import runtime from ${JSON.stringify(specifier)};`,
-        'export default runtime;',
-        `export const { ${names.join(', ')} } = runtime;`,
-        '',
-      ].join('\n'),
-    );
-
+    fs.writeFileSync(file, await stubFor(specifier));
     entryPoints[name] = file;
-    console.log(`  ${specifier}: ${names.length} named exports`);
   }
 
   fs.mkdirSync(RUNTIME_DIR, { recursive: true });
