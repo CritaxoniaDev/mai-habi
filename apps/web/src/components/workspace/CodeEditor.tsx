@@ -17,6 +17,8 @@ import 'monaco-editor/esm/vs/language/css/monaco.contribution';
 import 'monaco-editor/esm/vs/language/html/monaco.contribution';
 import 'monaco-editor/esm/vs/language/json/monaco.contribution';
 
+import { emmetHTML, emmetCSS, emmetJSX } from 'emmet-monaco-es';
+
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
 import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
@@ -74,6 +76,15 @@ function configureMonaco(): void {
   for (const [name, data] of Object.values(MONACO_THEMES)) {
     monaco.editor.defineTheme(name, data);
   }
+
+  /*
+   * Emmet: `div` + Tab expands to <div></div>, `ul>li*3`, `.card`, and the rest
+   * of the Emmet vocabulary. The JSX variant covers .tsx/.jsx and emits
+   * `className` instead of `class`.
+   */
+  emmetHTML(monaco, ['html']);
+  emmetCSS(monaco, ['css', 'scss', 'less']);
+  emmetJSX(monaco, ['javascript', 'typescript']);
 
   void loadReactTypes(monaco);
 }
