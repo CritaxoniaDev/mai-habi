@@ -22,6 +22,8 @@
     "@tailwindcss/browser": "^4.3.3",
     "@tailwindcss/vite": "^4.0.0",
     "astro": "^5.2.5",
+    "driver.js": "^1.8.0",
+    "emmet-monaco-es": "^5.7.0",
     "esbuild-wasm": "^0.28.2",
     "lucide-react": "^0.474.0",
     "monaco-editor": "^0.52.2",
