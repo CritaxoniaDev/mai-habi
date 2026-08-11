@@ -51,6 +51,21 @@
   --danger-surface: #fef3f2;
   --danger-border: #fecdca;
 
+  /*
+   * File-type accents for the explorer. Colour is the fastest way to tell
+   * App.tsx from App.css in a dense tree, but it is always supplementary — the
+   * filename is the identifier, so these only ever tint an icon.
+   */
+  --lang-react: #0891b2;
+  --lang-typescript: #3178c6;
+  --lang-javascript: #a16207;
+  --lang-css: #663399;
+  --lang-html: #e34f26;
+  --lang-json: #525252;
+  --lang-markdown: #525252;
+  --lang-image: #047857;
+  --lang-config: #6a6a6a;
+
   --focus-ring: #171717;
   --selection: #dedede;
   --scrollbar-thumb: #d4d4d4;
@@ -92,6 +107,16 @@
   --danger: #fda29b;
   --danger-surface: #2a1211;
   --danger-border: #55201d;
+
+  --lang-react: #61dafb;
+  --lang-typescript: #6ba6e8;
+  --lang-javascript: #f7df1e;
+  --lang-css: #a78bfa;
+  --lang-html: #e34f26;
+  --lang-json: #d4d4d4;
+  --lang-markdown: #d4d4d4;
+  --lang-image: #86efac;
+  --lang-config: #a3a3a3;
 
   --focus-ring: #f5f5f5;
   --selection: #333333;
@@ -140,6 +165,16 @@
 
   --color-focus-ring: var(--focus-ring);
   --color-backdrop: var(--backdrop);
+
+  --color-lang-react: var(--lang-react);
+  --color-lang-typescript: var(--lang-typescript);
+  --color-lang-javascript: var(--lang-javascript);
+  --color-lang-css: var(--lang-css);
+  --color-lang-html: var(--lang-html);
+  --color-lang-json: var(--lang-json);
+  --color-lang-markdown: var(--lang-markdown);
+  --color-lang-image: var(--lang-image);
+  --color-lang-config: var(--lang-config);
 }
 
 @theme {
