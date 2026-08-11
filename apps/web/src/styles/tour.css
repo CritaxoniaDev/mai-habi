@@ -1,0 +1,126 @@
+/*
+ * Product tour — the driver.js popover, restyled to the design system so the
+ * onboarding overlay matches the rest of the editor in both themes.
+ *
+ * driver.js appends the popover to <body>, so the semantic tokens reach it
+ * through the `.dark` class on <html>; every colour below is a token, never a
+ * literal. The library ships heavier type and filled controls by default —
+ * both are pulled back here to the product's lighter chrome.
+ *
+ * Selectors are scoped with the `.mai-habi-tour` popover class, which also
+ * lifts their specificity above driver.css so the order of the two stylesheets
+ * never matters.
+ */
+
+.driver-popover.mai-habi-tour {
+  --driver-popover-font-family: var(--font-sans);
+  background-color: var(--surface-raised);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dialog);
+  min-width: 260px;
+  max-width: 320px;
+  padding: 16px;
+}
+
+.driver-popover.mai-habi-tour .driver-popover-title {
+  margin-right: 20px;
+  font-size: var(--text-secondary);
+  line-height: var(--text-secondary--line-height);
+  font-weight: 400;
+  color: var(--foreground);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-description {
+  margin-top: 6px;
+  font-size: var(--text-label);
+  line-height: 18px;
+  font-weight: 300;
+  color: var(--muted-foreground);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-progress-text {
+  font-size: var(--text-micro);
+  line-height: var(--text-micro--line-height);
+  font-weight: 300;
+  color: var(--subtle-foreground);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-close-btn {
+  color: var(--subtle-foreground);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-close-btn:hover,
+.driver-popover.mai-habi-tour .driver-popover-close-btn:focus-visible {
+  color: var(--foreground);
+}
+
+/* ------------------------------------------------------------- footer buttons */
+
+.driver-popover.mai-habi-tour .driver-popover-footer {
+  margin-top: 16px;
+  gap: 8px;
+}
+
+.driver-popover.mai-habi-tour .driver-popover-footer-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--surface);
+  color: var(--muted-foreground);
+  font-size: var(--text-secondary);
+  line-height: 20px;
+  font-weight: 400;
+  text-shadow: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-footer-btn:hover {
+  border-color: var(--border-strong);
+  background-color: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-footer-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The trailing button (Next / Done) is the primary action, styled to match the
+ * product's `default` button variant rather than a filled slab. */
+.driver-popover.mai-habi-tour .driver-popover-navigation-btns button:last-child {
+  border-color: var(--border-strong);
+  background-color: var(--surface-secondary);
+  color: var(--foreground);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-navigation-btns button:last-child:hover {
+  background-color: var(--surface-active);
+}
+
+.driver-popover.mai-habi-tour .driver-popover-btn-disabled {
+  opacity: 0.4;
+}
+
+/* --------------------------------------------------------------------- arrow */
+
+/* Only the visible edge is recoloured; the transparent sides are left to
+ * driver.css so the pointer keeps its shape. */
+.driver-popover.mai-habi-tour .driver-popover-arrow-side-left {
+  border-left-color: var(--surface-raised);
+}
+.driver-popover.mai-habi-tour .driver-popover-arrow-side-right {
+  border-right-color: var(--surface-raised);
+}
+.driver-popover.mai-habi-tour .driver-popover-arrow-side-top {
+  border-top-color: var(--surface-raised);
+}
+.driver-popover.mai-habi-tour .driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--surface-raised);
+}

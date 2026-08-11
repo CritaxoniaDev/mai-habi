@@ -119,6 +119,7 @@ export default function WorkspaceHeader() {
             <Button
               variant="ghost"
               size="icon-sm"
+              data-tour="command"
               className="touch-target hidden sm:inline-flex"
               aria-label="Command palette"
               onClick={() => useUi.getState().setPalette('commands')}
@@ -142,11 +143,15 @@ export default function WorkspaceHeader() {
             </Button>
           </Tooltip>
 
-          <Button variant="default" onClick={openViewer}>
+          <Button variant="default" data-tour="viewer" onClick={openViewer}>
             <Play /> Open viewer
           </Button>
 
-          <Button variant="outline" onClick={() => useUi.getState().setDialog('share')}>
+          <Button
+            variant="outline"
+            data-tour="share"
+            onClick={() => useUi.getState().setDialog('share')}
+          >
             Share
           </Button>
 

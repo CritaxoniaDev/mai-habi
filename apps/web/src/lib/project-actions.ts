@@ -12,6 +12,7 @@ import {
   saveLocalProjectWithFiles,
 } from '@mai-habi/shared';
 import { detectEntryFile, downloadProject } from '@mai-habi/filesystem';
+import { markProjectFresh } from './onboarding';
 
 export function projectHref(id: string): string {
   return `/editor/${id}`;
@@ -26,6 +27,7 @@ export async function createAndOpen(name: string, templateId: TemplateId): Promi
   const { project, files } = createProject({ name, templateId, guestId: guest.id });
 
   await saveLocalProjectWithFiles(project, files);
+  markProjectFresh(project.id);
   window.location.href = projectHref(project.id);
 }
 
@@ -45,6 +47,7 @@ export async function importAndOpen(name: string, files: FileMap): Promise<void>
   };
 
   await saveLocalProjectWithFiles(imported, files);
+  markProjectFresh(imported.id);
   window.location.href = projectHref(imported.id);
 }
 

@@ -19,6 +19,7 @@ import { CommandPalette } from '../components/CommandPalette';
 import { ShareDialog } from '../components/dialogs/ShareDialog';
 import { SettingsDialog } from '../components/dialogs/SettingsDialog';
 import { PromptDialog } from '../components/dialogs/PromptDialog';
+import { OnboardingWelcome } from '../components/OnboardingWelcome';
 
 type Layout = 'mobile' | 'tablet' | 'desktop';
 
@@ -91,7 +92,10 @@ export default function Workspace({ projectId }: { projectId: string }) {
   }
 
   const sidebar = (
-    <div className="flex h-full flex-col overflow-hidden border-r border-border bg-surface">
+    <div
+      data-tour="files"
+      className="flex h-full flex-col overflow-hidden border-r border-border bg-surface"
+    >
       <div className="flex h-8 shrink-0 items-center gap-1 px-2">
         <span className="text-micro font-normal uppercase tracking-[0.08em] text-muted-foreground">
           Files
@@ -136,7 +140,7 @@ export default function Workspace({ projectId }: { projectId: string }) {
   );
 
   const editorArea = (
-    <div className="flex h-full flex-col">
+    <div data-tour="editor" className="flex h-full flex-col">
       <EditorTabs />
       <div className="min-h-0 flex-1">
         <CodeEditor />
@@ -150,6 +154,7 @@ export default function Workspace({ projectId }: { projectId: string }) {
       <ShareDialog />
       <SettingsDialog />
       <PromptDialog />
+      <OnboardingWelcome />
       <Toaster />
     </>
   );

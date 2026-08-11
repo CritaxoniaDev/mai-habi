@@ -21,7 +21,7 @@ export function BottomPanel() {
   const errorCount = entries.filter((entry) => entry.level === 'error').length;
 
   return (
-    <div className="flex h-full flex-col border-t border-border bg-surface">
+    <div data-tour="panel" className="flex h-full flex-col border-t border-border bg-surface">
       <div
         className="flex h-8 shrink-0 items-center gap-1 border-b border-border px-2"
         role="tablist"

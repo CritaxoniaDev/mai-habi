@@ -13,6 +13,7 @@ import {
   setThemeMode,
 } from '@mai-habi/ui';
 import {
+  Compass,
   Download,
   FilePlus,
   FolderPlus,
@@ -31,6 +32,7 @@ import { useUi } from '../state/ui';
 import { useWorkspace } from '../state/workspace';
 import { openViewer, recompile } from '../lib/run';
 import { promptNewFile, promptNewFolder } from '../lib/create-node';
+import { startProductTour } from '../lib/tour';
 
 const THEME_ICONS = { light: Sun, dark: Moon, system: Monitor } as const;
 
@@ -123,6 +125,12 @@ export function CommandPalette() {
               </CommandItem>
               <CommandItem onSelect={runAnd(() => useWorkspace.getState().setBottomTab('preview'))}>
                 <PanelBottom /> Show preview panel
+              </CommandItem>
+            </CommandGroup>
+
+            <CommandGroup heading="Help">
+              <CommandItem onSelect={runAnd(startProductTour)}>
+                <Compass /> Take a tour
               </CommandItem>
             </CommandGroup>
           </>
