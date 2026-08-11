@@ -14,12 +14,23 @@ interface RawEntry {
   bytes: Uint8Array;
 }
 
+export interface ImportOptions {
+  /**
+   * Drop a single wrapping directory.
+   *
+   * Archives and folder pickers nest everything under one folder, which should
+   * vanish when the import *becomes* the project. When merging into a folder
+   * that already exists, the structure is the point — pass false.
+   */
+  stripRoot?: boolean;
+}
+
 /**
  * Imported projects are untrusted input. Every entry is validated for path
  * traversal, size and depth before it reaches the virtual filesystem, and the
  * contents are never evaluated by the editor document.
  */
-function assemble(entries: RawEntry[]): ImportResult {
+function assemble(entries: RawEntry[], options: ImportOptions = {}): ImportResult {
   const skipped: string[] = [];
   const warnings: string[] = [];
 
@@ -31,7 +42,10 @@ function assemble(entries: RawEntry[]): ImportResult {
     return !shouldIgnoreImportPath(entry.path);
   });
 
-  const prefix = stripCommonRoot(candidates.map((entry) => normalizePath(entry.path)));
+  const prefix =
+    options.stripRoot === false
+      ? ''
+      : stripCommonRoot(candidates.map((entry) => normalizePath(entry.path)));
   const files: FileMap = {};
   let totalBytes = 0;
   let count = 0;
@@ -93,7 +107,10 @@ function assemble(entries: RawEntry[]): ImportResult {
 }
 
 /** Handles both a file picker selection and a directory picker (webkitdirectory). */
-export async function importFromFiles(list: File[] | FileList): Promise<ImportResult> {
+export async function importFromFiles(
+  list: File[] | FileList,
+  options: ImportOptions = {},
+): Promise<ImportResult> {
   const files = Array.from(list as ArrayLike<File>);
 
   const entries = await Promise.all(
@@ -103,10 +120,13 @@ export async function importFromFiles(list: File[] | FileList): Promise<ImportRe
     })),
   );
 
-  return assemble(entries);
+  return assemble(entries, options);
 }
 
-export async function importFromZip(archive: ArrayBuffer | Uint8Array): Promise<ImportResult> {
+export async function importFromZip(
+  archive: ArrayBuffer | Uint8Array,
+  options: ImportOptions = {},
+): Promise<ImportResult> {
   const { unzipSync } = await import('fflate');
   const bytes = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
 
@@ -125,27 +145,30 @@ export async function importFromZip(archive: ArrayBuffer | Uint8Array): Promise<
 
   if (entries.length === 0) throw new Error('The archive did not contain any importable files.');
 
-  return assemble(entries);
+  return assemble(entries, options);
 }
 
 /** Reads a drag-and-drop payload, walking directory entries recursively. */
-export async function importFromDataTransfer(transfer: DataTransfer): Promise<ImportResult> {
+export async function importFromDataTransfer(
+  transfer: DataTransfer,
+  options: ImportOptions = {},
+): Promise<ImportResult> {
   const items = Array.from(transfer.items).filter((item) => item.kind === 'file');
   const roots = items
     .map((item) => (item as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry?.())
     .filter((entry): entry is FileSystemEntry => Boolean(entry));
 
   if (roots.length === 0) {
-    return importFromFiles(Array.from(transfer.files));
+    return importFromFiles(Array.from(transfer.files), options);
   }
 
   const collected: RawEntry[] = [];
   await Promise.all(roots.map((entry) => walk(entry, '', collected)));
 
   const zip = collected.find((entry) => entry.path.toLowerCase().endsWith('.zip'));
-  if (collected.length === 1 && zip) return importFromZip(zip.bytes);
+  if (collected.length === 1 && zip) return importFromZip(zip.bytes, options);
 
-  return assemble(collected);
+  return assemble(collected, options);
 }
 
 async function walk(entry: FileSystemEntry, prefix: string, out: RawEntry[]): Promise<void> {
