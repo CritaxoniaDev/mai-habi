@@ -1,0 +1,136 @@
+---
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
+import '../styles/global.css';
+import { THEME_INIT_SCRIPT } from '@mai-habi/ui/theme-init';
+import ThemeToggle from '../components/ThemeToggle.astro';
+
+const appOrigin = import.meta.env.PUBLIC_APP_ORIGIN ?? 'http://localhost:4321';
+const docsOrigin = import.meta.env.PUBLIC_DOCS_ORIGIN ?? 'http://localhost:4323';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Resolves the theme before first paint; see packages/ui/src/theme. -->
+    <script is:inline set:html={THEME_INIT_SCRIPT} />
+  </head>
+
+  <body class="bg-background font-light text-foreground antialiased">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-header focus:rounded-md focus:border focus:border-border focus:bg-surface focus:px-3 focus:py-2 focus:text-secondary"
+    >
+      Skip to content
+    </a>
+
+    <header class="sticky top-0 z-header border-b border-border bg-background/85 backdrop-blur-sm">
+      <div class="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
+        <a
+          href="/"
+          class="rounded-sm text-body font-normal tracking-[0.14em] text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus-ring"
+        >
+          HABI
+        </a>
+
+        <nav aria-label="Primary" class="hidden items-center gap-5 md:flex">
+          <a
+            href="#how"
+            class="rounded-sm text-secondary text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >How it works</a
+          >
+          <a
+            href="#features"
+            class="rounded-sm text-secondary text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Features</a
+          >
+          <a
+            href="#limits"
+            class="rounded-sm text-secondary text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Limits</a
+          >
+          <a
+            href="/changelog"
+            class="rounded-sm text-secondary text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Changelog</a
+          >
+          <a
+            href={docsOrigin}
+            class="rounded-sm text-secondary text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Docs</a
+          >
+        </nav>
+
+        <div class="ml-auto flex items-center gap-3">
+          <ThemeToggle />
+          <a
+            href={appOrigin}
+            class="inline-flex h-8 items-center rounded-md bg-accent px-3.5 text-secondary font-normal text-accent-foreground transition-colors duration-[--duration-fast] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+          >
+            Open playground
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="border-t border-border">
+      <div
+        class="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <p class="text-body font-normal tracking-[0.14em]">HABI</p>
+          <p class="mt-1 text-label text-muted-foreground">
+            A browser code playground. © {year}
+          </p>
+        </div>
+
+        <nav aria-label="Footer" class="flex flex-wrap gap-x-6 gap-y-2">
+          <a
+            href={appOrigin}
+            class="rounded-sm text-label text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Playground</a
+          >
+          <a
+            href="/changelog"
+            class="rounded-sm text-label text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Changelog</a
+          >
+          <a
+            href={docsOrigin}
+            class="rounded-sm text-label text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Documentation</a
+          >
+          <a
+            href={`${docsOrigin}/reference/security/`}
+            class="rounded-sm text-label text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            >Security</a
+          >
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

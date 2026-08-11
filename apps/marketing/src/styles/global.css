@@ -1,0 +1,134 @@
+@import 'tailwindcss';
+@import '@mai-habi/ui/theme.css';
+
+/* The design tokens live in the shared package; nothing is redefined here. */
+@source '../../../../packages/ui/src';
+@source '../';
+
+/*
+ * A display scale for the marketing site only.
+ *
+ * The product's type scale tops out at 32px because an IDE has no use for
+ * anything larger. A landing page does, so two display steps are added — still
+ * at weight 300, with hierarchy carried by size and letter-spacing.
+ */
+@theme {
+  --text-display: clamp(40px, 6.5vw, 68px);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.035em;
+
+  --text-headline: clamp(28px, 3.6vw, 40px);
+  --text-headline--line-height: 1.15;
+  --text-headline--letter-spacing: -0.025em;
+
+  --text-lead: clamp(16px, 1.6vw, 19px);
+  --text-lead--line-height: 1.65;
+}
+
+@layer base {
+  /* Long-form marketing copy reads better with a touch more air. */
+  ::selection {
+    background-color: var(--selection);
+  }
+}
+
+/*
+ * Syntax colours for the static editor illustration.
+ *
+ * They mirror the Monaco themes the product actually ships, so the picture on
+ * the marketing site is the same palette a user meets in the editor.
+ */
+:root {
+  --code-keyword: #7c3aed;
+  --code-string: #047857;
+  --code-number: #b45309;
+  --code-tag: #be123c;
+  --code-type: #1d4ed8;
+}
+
+.dark {
+  --code-keyword: #c4b5fd;
+  --code-string: #86efac;
+  --code-number: #fcd34d;
+  --code-tag: #fda4af;
+  --code-type: #93c5fd;
+}
+
+@theme inline {
+  --color-code-keyword: var(--code-keyword);
+  --color-code-string: var(--code-string);
+  --color-code-number: var(--code-number);
+  --color-code-tag: var(--code-tag);
+  --color-code-type: var(--code-type);
+}
+
+/*
+ * Rendered markdown in the changelog.
+ *
+ * Release notes are authored as plain markdown, so the styling lives here
+ * rather than as classes on every element. Headings stay at weight 400 like
+ * everywhere else — the hierarchy comes from size and spacing.
+ */
+@layer components {
+  .release-notes > * + * {
+    margin-top: 1rem;
+  }
+
+  .release-notes h3 {
+    margin-top: 1.75rem;
+    font-size: var(--text-micro);
+    line-height: var(--text-micro--line-height);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted-foreground);
+  }
+
+  .release-notes p {
+    color: var(--foreground-secondary);
+  }
+
+  .release-notes ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding-left: 1.125rem;
+    list-style: none;
+  }
+
+  .release-notes li {
+    position: relative;
+    color: var(--foreground-secondary);
+  }
+
+  .release-notes li::before {
+    content: '';
+    position: absolute;
+    left: -1.125rem;
+    top: 0.6em;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background-color: var(--subtle-foreground);
+  }
+
+  .release-notes strong {
+    font-weight: 400;
+    color: var(--foreground);
+  }
+
+  .release-notes code {
+    padding: 0.1em 0.35em;
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--text-code);
+    color: var(--foreground);
+  }
+
+  .release-notes a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}

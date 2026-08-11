@@ -1,0 +1,77 @@
+---
+/**
+ * A static picture of the product.
+ *
+ * Deliberately plain markup — no screenshot to go stale, no JavaScript, and it
+ * inherits the real theme so it looks right in light and dark. Braces in the
+ * sample are HTML entities; Astro would otherwise read them as expressions.
+ */
+---
+
+<div class="grid gap-4 lg:grid-cols-[1.35fr_1fr] lg:gap-5" aria-hidden="true">
+  <!-- Editor -->
+  <div class="overflow-hidden rounded-xl border border-border bg-surface">
+    <div class="flex h-9 items-center gap-2 border-b border-border px-3">
+      <span class="size-2 rounded-full bg-border-strong"></span>
+      <span class="size-2 rounded-full bg-border-strong"></span>
+      <span class="size-2 rounded-full bg-border-strong"></span>
+      <span class="ml-2 text-micro text-muted-foreground">Editor</span>
+      <span class="ml-auto text-micro text-muted-foreground">Built in 34 ms</span>
+    </div>
+
+    <div class="grid grid-cols-[124px_1fr] sm:grid-cols-[148px_1fr]">
+      <div class="border-r border-border py-2">
+        <p class="px-3 pb-1.5 text-micro uppercase tracking-[0.08em] text-muted-foreground">Files</p>
+        <ul class="font-mono text-code">
+          <li class="px-3 py-0.5 text-muted-foreground">src</li>
+          <li class="bg-surface-active px-3 py-0.5 pl-5 text-foreground">App.tsx</li>
+          <li class="px-3 py-0.5 pl-5 text-muted-foreground">main.tsx</li>
+          <li class="px-3 py-0.5 pl-5 text-muted-foreground">styles.css</li>
+        </ul>
+      </div>
+
+      <div class="min-w-0 overflow-hidden p-3">
+        <pre class="overflow-x-auto font-mono text-code leading-relaxed"><code><span class="text-code-keyword">import</span> &#123; useState &#125; <span class="text-code-keyword">from</span> <span class="text-code-string">'react'</span>;
+
+<span class="text-code-keyword">export default function</span> <span class="text-code-type">App</span>() &#123;
+  <span class="text-code-keyword">const</span> [count, setCount] = useState(<span class="text-code-number">0</span>);
+
+  <span class="text-code-keyword">return</span> (
+    <span class="text-code-tag">&lt;button</span> onClick=&#123;() =&gt; setCount(count + <span class="text-code-number">1</span>)&#125;<span class="text-code-tag">&gt;</span>
+      Clicked &#123;count&#125; times
+    <span class="text-code-tag">&lt;/button&gt;</span>
+  );
+&#125;</code></pre>
+      </div>
+    </div>
+
+    <div class="flex h-8 items-center gap-3 border-t border-border px-3">
+      <span class="text-micro text-foreground">Console</span>
+      <span class="text-micro text-muted-foreground">Problems</span>
+      <span class="text-micro text-muted-foreground">Preview</span>
+      <span class="ml-auto text-micro text-success">No problems</span>
+    </div>
+  </div>
+
+  <!-- Viewer -->
+  <div class="overflow-hidden rounded-xl border border-border bg-surface">
+    <div class="flex h-9 items-center gap-3 border-b border-border px-3">
+      <span class="text-micro text-muted-foreground">Viewer</span>
+      <span class="text-micro text-foreground">Desktop</span>
+      <span class="text-micro text-muted-foreground">Tablet</span>
+      <span class="text-micro text-muted-foreground">Mobile</span>
+    </div>
+
+    <!--
+      White on purpose: a user's project never inherits the product theme, so
+      the illustration does not either.
+    -->
+    <div class="grid min-h-44 place-items-center bg-white p-6">
+      <span
+        class="rounded-lg border border-[color:#e5e5e5] px-4 py-2 text-secondary text-[color:#171717]"
+      >
+        Clicked 3 times
+      </span>
+    </div>
+  </div>
+</div>
