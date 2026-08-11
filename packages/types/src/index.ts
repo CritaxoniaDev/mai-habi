@@ -54,6 +54,7 @@ export interface TreeNode {
 export type TemplateId =
   | 'react-ts'
   | 'react-js'
+  | 'react-motion'
   | 'react-tailwind'
   | 'html-css-js'
   | 'blank'

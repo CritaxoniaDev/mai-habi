@@ -55,7 +55,11 @@ button:hover {
 }
 `;
 
-const MAIN_TSX = `import { StrictMode } from 'react';
+const MAIN_TSX = `// The entry file. This is where your app attaches to the page.
+//
+// React comes from the platform, so there is nothing to install — just import
+// it. The preview always provides <div id="root">.
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App from './App';
@@ -76,22 +80,68 @@ const MAIN_JSX = MAIN_TSX.replace("from './App'", "from './App.jsx'");
 
 const APP_TSX = `import { useState } from 'react';
 
+// Local imports resolve the way you would expect: the extension is optional,
+// and a folder with an index file can be imported by folder name.
+import Counter from './components/Counter';
+
 export default function App() {
-  const [count, setCount] = useState(0);
+  const [name, setName] = useState('React');
 
   return (
     <main className="container">
-      <h1>Hello React</h1>
-      <p>Start editing src/App.tsx. Changes compile in your browser.</p>
-      <button type="button" onClick={() => setCount(count + 1)}>
-        Clicked {count} {count === 1 ? 'time' : 'times'}
-      </button>
+      <h1>Hello {name}</h1>
+      <p>
+        Edit <code>src/App.tsx</code> and the preview rebuilds. Everything
+        compiles in this browser — nothing is uploaded.
+      </p>
+
+      <input
+        value={name}
+        aria-label="Name"
+        onChange={(event) => setName(event.target.value)}
+        placeholder="Type a name"
+      />
+
+      <Counter label="Clicks" />
     </main>
   );
 }
 `;
 
-const APP_JSX = APP_TSX.replace('src/App.tsx', 'src/App.jsx');
+const COUNTER_TSX = `import { useState } from 'react';
+
+// Props are typed, and the editor knows about them. Try hovering "label".
+interface CounterProps {
+  label: string;
+  start?: number;
+}
+
+export default function Counter({ label, start = 0 }: CounterProps) {
+  const [count, setCount] = useState(start);
+
+  return (
+    <button type="button" onClick={() => setCount(count + 1)}>
+      {label}: {count}
+    </button>
+  );
+}
+`;
+
+const COUNTER_JSX = `import { useState } from 'react';
+
+export default function Counter({ label, start = 0 }) {
+  const [count, setCount] = useState(start);
+
+  return (
+    <button type="button" onClick={() => setCount(count + 1)}>
+      {label}: {count}
+    </button>
+  );
+}
+`;
+
+const APP_JSX = APP_TSX.replace('src/App.tsx', 'src/App.jsx')
+  .replace("from './components/Counter'", "from './components/Counter.jsx'");
 
 const APP_TAILWIND = `import { useState } from 'react';
 
@@ -232,6 +282,173 @@ button?.addEventListener('click', () => {
 });
 `;
 
+const APP_MOTION_TSX = `import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ReactLenis } from 'lenis/react';
+import clsx from 'clsx';
+
+import Section from './components/Section';
+
+// Motion, Lenis and clsx are provided by the playground — no install step, and
+// they are only downloaded because this project imports them.
+
+const SECTIONS = [
+  { title: 'Scroll', body: 'Lenis smooths the whole page. Scroll and see.' },
+  { title: 'Animate', body: 'Each section fades up the first time it appears.' },
+  { title: 'Compose', body: 'Everything here compiled in your browser.' },
+];
+
+export default function App() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <ReactLenis root>
+      <main className="page">
+        <motion.header
+          className="hero"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.2, 0, 0, 1] }}
+        >
+          <h1>Motion</h1>
+          <p>Edit src/App.tsx. The preview rebuilds as you type.</p>
+
+          <button
+            type="button"
+            className={clsx('toggle', open && 'toggle-open')}
+            onClick={() => setOpen(!open)}
+          >
+            {open ? 'Hide details' : 'Show details'}
+          </button>
+
+          {/* AnimatePresence lets an element animate on the way out too. */}
+          <AnimatePresence initial={false}>
+            {open && (
+              <motion.p
+                className="details"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                Nothing was installed to make this work.
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </motion.header>
+
+        {SECTIONS.map((section) => (
+          <Section key={section.title} title={section.title}>
+            {section.body}
+          </Section>
+        ))}
+      </main>
+    </ReactLenis>
+  );
+}
+`;
+
+const SECTION_TSX = `import type { ReactNode } from 'react';
+import { motion } from 'framer-motion';
+
+interface SectionProps {
+  title: string;
+  children: ReactNode;
+}
+
+export default function Section({ title, children }: SectionProps) {
+  return (
+    <motion.section
+      className="section"
+      initial={{ opacity: 0, y: 32 }}
+      // whileInView runs when the element scrolls into view; "once" stops it
+      // replaying every time you scroll past.
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.4 }}
+      transition={{ duration: 0.5, ease: [0.2, 0, 0, 1] }}
+    >
+      <h2>{title}</h2>
+      <p>{children}</p>
+    </motion.section>
+  );
+}
+`;
+
+const MOTION_CSS = `html,
+body {
+  margin: 0;
+}
+
+body {
+  font-family: Geist, Inter, system-ui, sans-serif;
+  font-weight: 300;
+  color: #171717;
+  background: #ffffff;
+}
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 96px 24px 160px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+p {
+  margin: 0;
+  color: #525252;
+  line-height: 1.6;
+}
+
+.toggle {
+  font: inherit;
+  margin-top: 8px;
+  padding: 8px 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.toggle:hover {
+  background: #f5f5f5;
+}
+
+.toggle-open {
+  background: #171717;
+  color: #ffffff;
+  border-color: #171717;
+}
+
+.details {
+  overflow: hidden;
+}
+
+.section {
+  margin-top: 160px;
+}
+`;
+
 const REACT_TS: ProjectTemplate = {
   id: 'react-ts',
   name: 'React + TypeScript',
@@ -240,6 +457,7 @@ const REACT_TS: ProjectTemplate = {
   files: {
     'src/main.tsx': MAIN_TSX,
     'src/App.tsx': APP_TSX,
+    'src/components/Counter.tsx': COUNTER_TSX,
     'src/styles.css': STYLES_CSS,
   },
 };
@@ -252,7 +470,21 @@ const REACT_JS: ProjectTemplate = {
   files: {
     'src/main.jsx': MAIN_JSX,
     'src/App.jsx': APP_JSX,
+    'src/components/Counter.jsx': COUNTER_JSX,
     'src/styles.css': STYLES_CSS,
+  },
+};
+
+const REACT_MOTION: ProjectTemplate = {
+  id: 'react-motion',
+  name: 'React + Motion',
+  description: 'Animation and smooth scrolling, using the provided libraries.',
+  settings: { entryFile: 'src/main.tsx', tailwind: false },
+  files: {
+    'src/main.tsx': MAIN_TSX,
+    'src/App.tsx': APP_MOTION_TSX,
+    'src/components/Section.tsx': SECTION_TSX,
+    'src/styles.css': MOTION_CSS,
   },
 };
 
@@ -298,6 +530,7 @@ const BLANK: ProjectTemplate = {
 export const TEMPLATES: ProjectTemplate[] = [
   REACT_TS,
   REACT_JS,
+  REACT_MOTION,
   REACT_TAILWIND,
   HTML_CSS_JS,
   BLANK,
