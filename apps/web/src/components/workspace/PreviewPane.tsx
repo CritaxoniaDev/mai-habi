@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import type { FontConfig } from '@mai-habi/types';
 import {
   PREVIEW_SANDBOX,
   buildPlaceholderDocument,
@@ -7,6 +8,9 @@ import {
 } from '@mai-habi/compiler';
 import { cn } from '@mai-habi/ui';
 import { useWorkspace } from '../../state/workspace';
+
+/** Stable empty reference so the selector never churns re-renders. */
+const NO_FONTS: FontConfig[] = [];
 
 /**
  * Hosts the compiled application.
@@ -22,6 +26,7 @@ export function PreviewPane({ visible }: { visible: boolean }) {
   const preview = useWorkspace((state) => state.preview);
   const compileState = useWorkspace((state) => state.compileState);
   const tailwind = useWorkspace((state) => state.project?.settings.tailwind ?? false);
+  const fonts = useWorkspace((state) => state.project?.settings.fonts) ?? NO_FONTS;
   const name = useWorkspace((state) => state.project?.name ?? 'Preview');
 
   const document = useMemo(() => {
@@ -35,10 +40,11 @@ export function PreviewPane({ visible }: { visible: boolean }) {
       js: preview.js,
       css: preview.css,
       tailwind,
+      fonts,
       origin: window.location.origin,
       title: name,
     });
-  }, [preview, tailwind, name, compileState]);
+  }, [preview, tailwind, fonts, name, compileState]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {

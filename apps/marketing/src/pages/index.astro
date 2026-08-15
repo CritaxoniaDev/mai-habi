@@ -1,80 +1,89 @@
 ---
-import Base from '../layouts/Base.astro';
-import EditorMock from '../components/EditorMock.astro';
+import Base from "../layouts/Base.astro";
+import EditorMock from "../components/EditorMock.astro";
 
-const appOrigin = import.meta.env.PUBLIC_APP_ORIGIN ?? 'http://localhost:4321';
-const docsOrigin = import.meta.env.PUBLIC_DOCS_ORIGIN ?? 'http://localhost:4323';
+const appOrigin = import.meta.env.PUBLIC_APP_ORIGIN ?? "http://localhost:4321";
+const docsOrigin =
+  import.meta.env.PUBLIC_DOCS_ORIGIN ?? "http://localhost:4323";
 
 const steps = [
   {
-    number: '01',
-    title: 'Type',
-    body: 'Monaco with real TypeScript checking, a file tree, tabs and a command palette. React types are loaded for you, so useState and ReactNode autocomplete without a node_modules folder anywhere.',
+    number: "01",
+    title: "Type",
+    body: "Monaco with real TypeScript checking, a file tree, tabs and a command palette. React types are loaded for you, so useState and ReactNode autocomplete without a node_modules folder anywhere.",
   },
   {
-    number: '02',
-    title: 'Compile',
-    body: 'esbuild runs as WebAssembly in a Web Worker on your own device. It resolves imports against your project, transforms JSX and TypeScript, and gathers your CSS — a pause in typing later.',
+    number: "02",
+    title: "Compile",
+    body: "esbuild runs as WebAssembly in a Web Worker on your own device. It resolves imports against your project, transforms JSX and TypeScript, and gathers your CSS — a pause in typing later.",
   },
   {
-    number: '03',
-    title: 'Run',
-    body: 'Output goes into a sandboxed iframe. Keep the small preview panel beside your code, or open the viewer as its own page and send that link to someone else.',
+    number: "03",
+    title: "Run",
+    body: "Output goes into a sandboxed iframe. Keep the small preview panel beside your code, or open the viewer as its own page and send that link to someone else.",
   },
 ];
 
 const features = [
   {
-    title: 'HTML, CSS, JavaScript, React, TypeScript',
-    body: 'Start from a plain index.html or a typed React app. JSX and TSX compile through the automatic runtime, and an index.html entry resolves its own stylesheets and scripts.',
+    title: "HTML, CSS, JavaScript, React, TypeScript",
+    body: "Start from a plain index.html or a typed React app. JSX and TSX compile through the automatic runtime, and an index.html entry resolves its own stylesheets and scripts.",
   },
   {
-    title: 'Libraries without installing them',
-    body: 'React, Motion, Lenis, clsx and Zustand are served by the platform as real ES modules. Import one and it works — nothing to install, one shared React, and each is fetched only when a project actually uses it.',
+    title: "Libraries without installing them",
+    body: "React, Motion, Lenis, clsx and Zustand are served by the platform as real ES modules. Import one and it works — nothing to install, one shared React, and each is fetched only when a project actually uses it.",
   },
   {
-    title: 'Images that travel with the project',
-    body: 'Drop a picture into the file tree and import it, or point at it from CSS or an img tag. It is inlined into the build, so a shared link carries its own assets and needs no host.',
+    title: "Images that travel with the project",
+    body: "Drop a picture into the file tree and import it, or point at it from CSS or an img tag. It is inlined into the build, so a shared link carries its own assets and needs no host.",
   },
   {
-    title: 'Errors that say which kind they are',
-    body: 'A compilation failure gets a marker on the offending line and an entry in Problems. A runtime exception lands in the console with its stack. One never hides the other.',
+    title: "A REST client, built in",
+    body: "Call any API without leaving the tab. Collections and folders, environments with {{variables}}, auth, and every body type — form-data, JSON, GraphQL, binary. Requests go through a server-side proxy, so CORS never gets in the way.",
   },
   {
-    title: 'A viewer that is only your app',
-    body: 'No file tree, no toolbar, no editor chrome. Device presets, fullscreen, and a URL a recipient can open without an account.',
+    title: "Fonts without the copy and paste",
+    body: "Pick from Google Fonts in a dialog and they load straight into the preview. Mark one the default and the starters follow; reference the rest by name in your CSS.",
   },
   {
-    title: 'Yours until you say otherwise',
-    body: 'Projects live in your browser through IndexedDB. Signing in is optional and adds cloud sync and short links; it never happens behind your back.',
+    title: "Errors that say which kind they are",
+    body: "A compilation failure gets a marker on the offending line and an entry in Problems. A runtime exception lands in the console with its stack. One never hides the other.",
   },
   {
-    title: 'Light, dark, system',
-    body: 'The product follows your operating system and switches with no reload. Monaco and your open tabs keep their state, and your project keeps its own appearance.',
+    title: "A viewer that is only your app",
+    body: "No file tree, no toolbar, no editor chrome. Device presets, fullscreen, and a URL a recipient can open without an account.",
+  },
+  {
+    title: "Yours until you say otherwise",
+    body: "Projects live in your browser through IndexedDB. Signing in is optional and adds cloud sync and short links; it never happens behind your back.",
+  },
+  {
+    title: "Light, dark, system",
+    body: "The product follows your operating system and switches with no reload. Monaco and your open tabs keep their state, and your project keeps its own appearance.",
   },
 ];
 
 const templates = [
-  'HTML, CSS & JavaScript',
-  'React + TypeScript',
-  'React + JavaScript',
-  'React + Motion',
-  'React + Tailwind CSS',
-  'Blank',
+  "HTML, CSS & JavaScript",
+  "React + TypeScript",
+  "React + JavaScript",
+  "React + Motion",
+  "React + Tailwind CSS",
+  "Blank",
 ];
 
 const limits = [
   {
-    title: 'No npm registry',
-    body: 'A curated shelf is provided — React, Motion, Lenis and a couple of utilities. Any other import is reported as a compile error, by name, instead of failing somewhere confusing at runtime.',
+    title: "No npm registry",
+    body: "A curated shelf is provided — React, Motion, Lenis and a couple of utilities. Any other import is reported as a compile error, by name, instead of failing somewhere confusing at runtime.",
   },
   {
-    title: 'No Node runtime',
-    body: 'There is no terminal, no npm install, no server process. The console panel is your application own browser console, and never pretends to be a shell.',
+    title: "No Node runtime",
+    body: "There is no terminal, no npm install, no server process. The console panel is your application own browser console, and never pretends to be a shell.",
   },
   {
-    title: 'Frontend only',
-    body: 'Anything that needs a server of its own belongs elsewhere. HABI is for interfaces, components, prototypes and teaching.',
+    title: "Frontend only",
+    body: "Anything that needs a server of its own belongs elsewhere. HABI is for interfaces, components, prototypes and teaching.",
   },
 ];
 ---
@@ -94,8 +103,9 @@ const limits = [
     </h1>
 
     <p class="mt-6 max-w-2xl text-lead font-light text-foreground-secondary">
-      HABI compiles HTML, CSS, JavaScript, React and TypeScript on your own machine — no install,
-      no container to boot, nothing uploaded. Open a tab and you are already coding.
+      HABI compiles HTML, CSS, JavaScript, React and TypeScript on your own
+      machine — no install, no container to boot, nothing uploaded. Open a tab
+      and you are already coding.
     </p>
 
     <div class="mt-9 flex flex-wrap items-center gap-3">
@@ -127,16 +137,20 @@ const limits = [
     <div class="mx-auto max-w-6xl px-6 py-20">
       <h2 class="text-headline font-light">Three steps, all of them local</h2>
       <p class="mt-3 max-w-2xl text-body font-light text-muted-foreground">
-        The server sends you an application and some static files. Everything after that happens on
-        your device.
+        The server sends you an application and some static files. Everything
+        after that happens on your device.
       </p>
 
       <ol class="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
         {
           steps.map((step) => (
             <li>
-              <p class="font-mono text-label text-muted-foreground">{step.number}</p>
-              <h3 class="mt-3 text-section font-light text-foreground">{step.title}</h3>
+              <p class="font-mono text-label text-muted-foreground">
+                {step.number}
+              </p>
+              <h3 class="mt-3 text-section font-light text-foreground">
+                {step.title}
+              </h3>
               <p class="mt-2.5 text-secondary font-light leading-relaxed text-foreground-secondary">
                 {step.body}
               </p>
@@ -145,20 +159,48 @@ const limits = [
         }
       </ol>
 
-      <figure class="mt-14 rounded-xl border border-border bg-surface p-6 sm:p-8">
+      <figure
+        class="habi-pipeline mt-14 rounded-xl border border-border bg-surface p-6 sm:p-8"
+      >
         <svg
-          viewBox="0 0 640 300"
+          viewBox="0 0 640 380"
           role="img"
           aria-labelledby="pipeline-title pipeline-desc"
           class="mx-auto h-auto w-full max-w-2xl"
         >
-          <title id="pipeline-title">How HABI runs your code on your own device</title>
+          <title id="pipeline-title">
+            How HABI runs your code on your own device
+          </title>
           <desc id="pipeline-desc">
-            Your keystrokes go into a Web Worker that runs esbuild-wasm on your CPU. The result is
-            handed to a sandboxed iframe that is allowed to run scripts and nothing else.
+            Your keystrokes go into a Web Worker that runs esbuild-wasm on your
+            CPU. The result is handed to a sandboxed iframe that is allowed to
+            run scripts and nothing else.
           </desc>
 
-          <!-- Connectors: lines then arrowheads, both inheriting one muted colour. -->
+          <defs>
+            <!-- Sheen that sweeps across the bundler node while it "builds". -->
+            <linearGradient
+              id="habi-sheen-grad"
+              class="text-foreground"
+              x1="0"
+              y1="0"
+              x2="1"
+              y2="0"
+            >
+              <stop offset="0%" stop-color="currentColor" stop-opacity="0"
+              ></stop>
+              <stop offset="50%" stop-color="currentColor" stop-opacity="0.16"
+              ></stop>
+              <stop offset="100%" stop-color="currentColor" stop-opacity="0"
+              ></stop>
+            </linearGradient>
+            <clipPath id="habi-clip-build">
+              <rect x="236" y="132" width="168" height="76" rx="10"></rect>
+            </clipPath>
+          </defs>
+
+          <!-- 1. Rails: static lines + arrowheads. These carry the meaning on their own,
+         so the diagram still reads with motion switched off. -->
           <g
             class="text-muted-foreground"
             stroke="currentColor"
@@ -166,50 +208,400 @@ const limits = [
             stroke-linecap="round"
             fill="none"
           >
-            <line x1="320" y1="76" x2="320" y2="108" />
-            <line x1="320" y1="176" x2="320" y2="206" />
-            <line x1="212" y1="146" x2="228" y2="146" />
-            <line x1="404" y1="146" x2="420" y2="146" />
+            <line x1="320" y1="80" x2="320" y2="122"></line>
+            <line x1="192" y1="170" x2="226" y2="170"></line>
+            <line x1="404" y1="170" x2="438" y2="170"></line>
+            <line x1="320" y1="208" x2="320" y2="241"></line>
           </g>
           <g class="text-muted-foreground" fill="currentColor">
-            <path d="M315 108 L325 108 L320 116 Z" />
-            <path d="M315 206 L325 206 L320 214 Z" />
-            <path d="M228 141 L228 151 L236 146 Z" />
-            <path d="M420 141 L420 151 L428 146 Z" />
+            <path d="M315 122 L325 122 L320 131 Z"></path>
+            <path d="M226 165 L226 175 L235 170 Z"></path>
+            <path d="M438 165 L438 175 L447 170 Z"></path>
+            <path d="M315 241 L325 241 L320 250 Z"></path>
           </g>
 
-          <!-- Nodes: border-strong outline, faint surface fill. -->
+          <!-- 2. Packets, drawn before the node fills so they appear to slide out of one
+         box and disappear into the next. -->
+          <g class="text-foreground" fill="var(--habi-accent)">
+            <rect
+              class="habi-drop"
+              style="--habi-run: 66px; animation-delay: 0s"
+              x="318.5"
+              y="66"
+              width="3"
+              height="14"
+              rx="1.5"></rect>
+            <rect
+              class="habi-slide"
+              style="--habi-run: 58px; animation-delay: .5s"
+              x="178"
+              y="168.5"
+              width="14"
+              height="3"
+              rx="1.5"></rect>
+            <rect
+              class="habi-slide"
+              style="--habi-run: 58px; animation-delay: 1.5s"
+              x="390"
+              y="168.5"
+              width="14"
+              height="3"
+              rx="1.5"></rect>
+            <rect
+              class="habi-drop"
+              style="--habi-run: 70px; animation-delay: 2.4s"
+              x="318.5"
+              y="194"
+              width="3"
+              height="14"
+              rx="1.5"></rect>
+          </g>
+
+          <!-- 3. Nodes. -->
           <g
             class="text-border-strong"
             stroke="currentColor"
             stroke-width="1.25"
             style="fill: var(--surface-secondary)"
           >
-            <rect x="220" y="28" width="200" height="48" rx="10" />
-            <rect x="44" y="116" width="168" height="60" rx="8" />
-            <rect x="236" y="116" width="168" height="60" rx="8" />
-            <rect x="428" y="116" width="168" height="60" rx="8" />
-            <rect x="200" y="214" width="240" height="64" rx="10" />
+            <rect x="210" y="24" width="220" height="56" rx="12"></rect>
+            <rect x="24" y="132" width="168" height="76" rx="10"></rect>
+            <rect x="236" y="132" width="168" height="76" rx="10"></rect>
+            <rect x="448" y="132" width="168" height="76" rx="10"></rect>
+            <rect x="180" y="264" width="280" height="88" rx="14"></rect>
           </g>
 
-          <!-- Labels: monospaced to keep the schematic, technical feel. -->
-          <g class="font-mono" fill="currentColor" text-anchor="middle" dominant-baseline="central">
-            <text class="text-foreground" x="320" y="52" font-size="15">your keystrokes</text>
-            <text class="text-foreground" x="128" y="146" font-size="14">Web Worker</text>
-            <text class="text-foreground" x="320" y="146" font-size="14">esbuild-wasm</text>
-            <text class="text-foreground" x="512" y="146" font-size="14">your CPU</text>
-            <text class="text-foreground" x="320" y="236" font-size="15">sandboxed iframe</text>
-            <text class="text-muted-foreground" x="320" y="258" font-size="11.5">
-              allow-scripts, nothing else
-            </text>
+          <!-- 4. Build sheen, clipped to the bundler node. The clip lives on the group so
+         the child can be transformed without dragging the clip along with it. -->
+          <g clip-path="url(#habi-clip-build)">
+            <rect
+              class="habi-sheen"
+              style="--habi-run: 220px; animation-delay: 1.1s"
+              x="196"
+              y="132"
+              width="64"
+              height="76"
+              fill="url(#habi-sheen-grad)"></rect>
+          </g>
+
+          <!-- 5. The "live" ring that walks the pipeline: a wide soft halo under a crisp
+         outline, both riding one group opacity. -->
+          <g class="text-foreground" fill="none" stroke="var(--habi-accent)">
+            <g class="habi-live" style="animation-delay: 0s">
+              <rect
+                x="210"
+                y="24"
+                width="220"
+                height="56"
+                rx="12"
+                stroke-width="6"
+                stroke-opacity=".14"></rect>
+              <rect
+                x="210"
+                y="24"
+                width="220"
+                height="56"
+                rx="12"
+                stroke-width="1.5"></rect>
+            </g>
+            <g class="habi-live" style="animation-delay: .35s">
+              <rect
+                x="24"
+                y="132"
+                width="168"
+                height="76"
+                rx="10"
+                stroke-width="6"
+                stroke-opacity=".14"></rect>
+              <rect
+                x="24"
+                y="132"
+                width="168"
+                height="76"
+                rx="10"
+                stroke-width="1.5"></rect>
+            </g>
+            <g class="habi-live" style="animation-delay: .95s">
+              <rect
+                x="236"
+                y="132"
+                width="168"
+                height="76"
+                rx="10"
+                stroke-width="6"
+                stroke-opacity=".14"></rect>
+              <rect
+                x="236"
+                y="132"
+                width="168"
+                height="76"
+                rx="10"
+                stroke-width="1.5"></rect>
+            </g>
+            <g class="habi-live" style="animation-delay: 1.95s">
+              <rect
+                x="448"
+                y="132"
+                width="168"
+                height="76"
+                rx="10"
+                stroke-width="6"
+                stroke-opacity=".14"></rect>
+              <rect
+                x="448"
+                y="132"
+                width="168"
+                height="76"
+                rx="10"
+                stroke-width="1.5"></rect>
+            </g>
+            <g class="habi-live" style="animation-delay: 2.85s">
+              <rect
+                x="180"
+                y="264"
+                width="280"
+                height="88"
+                rx="14"
+                stroke-width="6"
+                stroke-opacity=".14"></rect>
+              <rect
+                x="180"
+                y="264"
+                width="280"
+                height="88"
+                rx="14"
+                stroke-width="1.5"></rect>
+            </g>
+          </g>
+
+          <!-- 6. Sandbox boundary: marching dashes for the wall, a lock seal straddling
+         the edge where the bundle enters. -->
+          <g class="text-border-strong" fill="none" stroke="currentColor">
+            <rect
+              class="habi-march"
+              x="196"
+              y="278"
+              width="248"
+              height="62"
+              rx="10"
+              stroke-width="1"
+              stroke-dasharray="3 6"
+              stroke-opacity=".85"></rect>
+          </g>
+          <g
+            class="text-border-strong"
+            stroke="currentColor"
+            stroke-width="1.25"
+          >
+            <circle
+              cx="320"
+              cy="264"
+              r="14"
+              style="fill: var(--surface-secondary)"></circle>
+          </g>
+          <g
+            class="text-muted-foreground"
+            stroke="currentColor"
+            stroke-width="1.2"
+            fill="none"
+          >
+            <path
+              d="M316.5 263 v-2.5 a3.5 3.5 0 0 1 7 0 v2.5"
+              stroke-linecap="round"></path>
+            <rect
+              x="313.5"
+              y="263"
+              width="13"
+              height="10"
+              rx="2"
+              style="fill: var(--surface-secondary)"></rect>
+          </g>
+
+          <!-- 7. Labels. -->
+          <g
+            class="font-mono"
+            fill="currentColor"
+            text-anchor="middle"
+            dominant-baseline="central"
+          >
+            <text class="text-foreground" x="320" y="52" font-size="15"
+              >your keystrokes<tspan class="habi-caret" dx="3">|</tspan></text
+            >
+
+            <text class="text-foreground" x="108" y="161" font-size="14"
+              >Web Worker</text
+            >
+            <text class="text-muted-foreground" x="108" y="185" font-size="11"
+              >off the main thread</text
+            >
+
+            <text class="text-foreground" x="320" y="161" font-size="14"
+              >esbuild-wasm</text
+            >
+            <text class="text-muted-foreground" x="320" y="185" font-size="11"
+              >bundles as you type</text
+            >
+
+            <text class="text-foreground" x="532" y="161" font-size="14"
+              >your CPU</text
+            >
+            <text class="text-muted-foreground" x="532" y="185" font-size="11"
+              >no network hop</text
+            >
+
+            <text class="text-foreground" x="320" y="302" font-size="15"
+              >sandboxed iframe</text
+            >
+            <text class="text-muted-foreground" x="320" y="324" font-size="11.5"
+              >allow-scripts, nothing else</text
+            >
           </g>
         </svg>
 
         <figcaption class="mt-6 text-label text-muted-foreground">
-          A hundred people using HABI is a hundred compilers, one per browser. The server never
-          compiles anything.
+          A hundred people using HABI is a hundred compilers, one per browser.
+          The server never compiles anything.
         </figcaption>
       </figure>
+
+      <style>
+        .habi-pipeline {
+          /* Swap --accent for whatever your brand token is called. It falls back to the
+       inherited text colour, so the diagram stays monochrome if the token is absent. */
+          --habi-accent: var(--accent, currentColor);
+          --habi-cycle: 5.4s;
+        }
+
+        /* Everything animated is invisible at rest, so reduced motion leaves a clean,
+     fully legible static schematic. */
+        .habi-drop,
+        .habi-slide,
+        .habi-sheen,
+        .habi-live {
+          opacity: 0;
+          transform-box: view-box;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+          .habi-drop,
+          .habi-slide,
+          .habi-sheen,
+          .habi-live {
+            animation-duration: var(--habi-cycle);
+            animation-iteration-count: infinite;
+            animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .habi-drop {
+            animation-name: habi-drop;
+          }
+          .habi-slide {
+            animation-name: habi-slide;
+          }
+          .habi-sheen {
+            animation-name: habi-sheen;
+            animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+          }
+          .habi-live {
+            animation-name: habi-live;
+            animation-timing-function: ease-out;
+          }
+
+          .habi-march {
+            animation: habi-march 2.6s linear infinite;
+          }
+          .habi-caret {
+            animation: habi-caret 1.1s step-end infinite;
+          }
+        }
+
+        @keyframes habi-drop {
+          0% {
+            transform: translateY(0);
+            opacity: 0;
+          }
+          3% {
+            opacity: 1;
+          }
+          10% {
+            opacity: 1;
+          }
+          13%,
+          100% {
+            transform: translateY(var(--habi-run));
+            opacity: 0;
+          }
+        }
+
+        @keyframes habi-slide {
+          0% {
+            transform: translateX(0);
+            opacity: 0;
+          }
+          3% {
+            opacity: 1;
+          }
+          10% {
+            opacity: 1;
+          }
+          13%,
+          100% {
+            transform: translateX(var(--habi-run));
+            opacity: 0;
+          }
+        }
+
+        @keyframes habi-sheen {
+          0% {
+            transform: translateX(0);
+            opacity: 0;
+          }
+          4% {
+            opacity: 1;
+          }
+          18% {
+            opacity: 1;
+          }
+          22%,
+          100% {
+            transform: translateX(var(--habi-run));
+            opacity: 0;
+          }
+        }
+
+        @keyframes habi-live {
+          0% {
+            opacity: 0;
+          }
+          3% {
+            opacity: 1;
+          }
+          16% {
+            opacity: 1;
+          }
+          26%,
+          100% {
+            opacity: 0;
+          }
+        }
+
+        @keyframes habi-march {
+          to {
+            stroke-dashoffset: -36;
+          }
+        }
+
+        @keyframes habi-caret {
+          0%,
+          49% {
+            opacity: 1;
+          }
+          50%,
+          100% {
+            opacity: 0;
+          }
+        }
+      </style>
     </div>
   </section>
 
@@ -222,7 +614,9 @@ const limits = [
         {
           features.map((feature) => (
             <article>
-              <h3 class="text-panel font-normal text-foreground">{feature.title}</h3>
+              <h3 class="text-panel font-normal text-foreground">
+                {feature.title}
+              </h3>
               <p class="mt-2 text-secondary font-light leading-relaxed text-foreground-secondary">
                 {feature.body}
               </p>
@@ -240,15 +634,19 @@ const limits = [
         <div>
           <h2 class="text-headline font-light">Start from something</h2>
           <p class="mt-3 text-body font-light text-muted-foreground">
-            Pick a starter and edit it. Or import a folder or a ZIP — the structure is preserved,
-            and build folders are skipped.
+            Pick a starter and edit it. Or import a folder or a ZIP — the
+            structure is preserved, and build folders are skipped.
           </p>
         </div>
 
-        <ul class="grid gap-px overflow-hidden rounded-xl border border-border bg-border">
+        <ul
+          class="grid gap-px overflow-hidden rounded-xl border border-border bg-border"
+        >
           {
             templates.map((template) => (
-              <li class="bg-surface px-5 py-4 text-body font-light text-foreground">{template}</li>
+              <li class="bg-surface px-5 py-4 text-body font-light text-foreground">
+                {template}
+              </li>
             ))
           }
         </ul>
@@ -261,11 +659,16 @@ const limits = [
     <div class="mx-auto max-w-6xl px-6 py-20">
       <div class="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
         <div>
-          <h2 class="text-headline font-light">Send a link, not a repository</h2>
-          <p class="mt-4 text-body font-light leading-relaxed text-foreground-secondary">
-            Share opens the viewer for whoever receives it. They see the running application, not
-            your editor, and they need no account and no install. With no backend configured the
-            project travels inside the link itself, so the page works with nothing behind it at all.
+          <h2 class="text-headline font-light">
+            Send a link, not a repository
+          </h2>
+          <p
+            class="mt-4 text-body font-light leading-relaxed text-foreground-secondary"
+          >
+            Share opens the viewer for whoever receives it. They see the running
+            application, not your editor, and they need no account and no
+            install. With no backend configured the project travels inside the
+            link itself, so the page works with nothing behind it at all.
           </p>
           <a
             href={`${docsOrigin}/guides/sharing/`}
@@ -276,9 +679,13 @@ const limits = [
         </div>
 
         <div class="rounded-xl border border-border bg-surface p-5">
-          <p class="text-micro uppercase tracking-[0.08em] text-muted-foreground">Viewer link</p>
+          <p
+            class="text-micro uppercase tracking-[0.08em] text-muted-foreground"
+          >
+            Viewer link
+          </p>
           <p class="mt-2 break-all font-mono text-code text-foreground">
-            https://habi.app/view/Km9Qp2Xa
+            https://app-playground-habi.vercel.app/view/Km9Qp2Xa
           </p>
           <hr class="my-5 border-border" />
           <dl class="grid grid-cols-2 gap-y-3 text-label">
@@ -299,15 +706,17 @@ const limits = [
     <div class="mx-auto max-w-6xl px-6 py-20">
       <h2 class="text-headline font-light">What HABI is not</h2>
       <p class="mt-3 max-w-2xl text-body font-light text-muted-foreground">
-        These are choices rather than gaps. They are the reason it starts instantly and costs
-        nothing to run.
+        These are choices rather than gaps. They are the reason it starts
+        instantly and costs nothing to run.
       </p>
 
       <div class="mt-12 grid gap-x-10 gap-y-11 sm:grid-cols-3">
         {
           limits.map((limit) => (
             <article>
-              <h3 class="text-panel font-normal text-foreground">{limit.title}</h3>
+              <h3 class="text-panel font-normal text-foreground">
+                {limit.title}
+              </h3>
               <p class="mt-2 text-secondary font-light leading-relaxed text-foreground-secondary">
                 {limit.body}
               </p>
@@ -321,8 +730,12 @@ const limits = [
   <!-- Close -->
   <section class="border-t border-border">
     <div class="mx-auto max-w-6xl px-6 py-24 text-center">
-      <h2 class="mx-auto max-w-2xl text-headline font-light">Open a tab and start</h2>
-      <p class="mx-auto mt-4 max-w-xl text-body font-light text-muted-foreground">
+      <h2 class="mx-auto max-w-2xl text-headline font-light">
+        Open a tab and start
+      </h2>
+      <p
+        class="mx-auto mt-4 max-w-xl text-body font-light text-muted-foreground"
+      >
         Nothing to sign up for, nothing to install, nothing to wait for.
       </p>
 

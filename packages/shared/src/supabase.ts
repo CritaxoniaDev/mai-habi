@@ -179,6 +179,9 @@ export async function fetchCloudProject(
       name: String(data.name ?? ''),
       entryFile: String(data.entry_file ?? 'src/main.tsx'),
       tailwind: Boolean(data.tailwind),
+      // Fonts are not persisted as a cloud column yet; they travel in settings.
+      fonts: [],
+      viewerToolbar: true,
       files: sources,
       updatedAt: Date.now(),
     }),
@@ -241,7 +244,9 @@ export async function publishToCloud(input: PublishInput): Promise<Share | null>
     snapshot: input.snapshot,
     expires_at: input.expiresAt ? new Date(input.expiresAt).toISOString() : null,
   });
-  if (error) throw error;
+  // Supabase errors are plain objects, not Error instances — wrap so callers
+  // (and any UI showing the message) get the real reason, not a generic one.
+  if (error) throw new Error(error.message || 'Could not publish the share.');
 
   return {
     shareId: share,

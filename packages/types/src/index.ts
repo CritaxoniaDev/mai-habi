@@ -64,11 +64,36 @@ export type Visibility = 'private' | 'unlisted' | 'unlisted-source';
 
 export type ProjectOrigin = 'local' | 'cloud';
 
+/**
+ * A Google Fonts family chosen for a project.
+ *
+ * Fonts are loaded live from Google Fonts into the preview, so the family name
+ * is used verbatim in the `css2` request. Referencing it in CSS (or letting one
+ * be the document default) is all the integration a project needs.
+ */
+export interface FontConfig {
+  /** Family name exactly as Google Fonts spells it, e.g. `Roboto Slab`. */
+  family: string;
+  /** Weights to load. Empty falls back to 400. */
+  weights: number[];
+  /** Also load the italic styles of each weight. */
+  italic: boolean;
+  /** Apply as the document's default font. At most one font sets this. */
+  defaultBody: boolean;
+}
+
 export interface ProjectSettings {
   /** File the compiler starts from, e.g. `src/main.tsx` or `index.html`. */
   entryFile: string;
   /** Tailwind is opt-in per project and never loaded when disabled. */
   tailwind: boolean;
+  /** Google Fonts loaded into the preview; empty when the project uses none. */
+  fonts: FontConfig[];
+  /**
+   * Whether the shared viewer shows its floating toolbar. Off gives a clean
+   * embed — just the running app, no chrome.
+   */
+  viewerToolbar: boolean;
   tabSize: number;
   wordWrap: boolean;
   minimap: boolean;
@@ -107,6 +132,8 @@ export interface PlaygroundSnapshot {
   name: string;
   entryFile: string;
   tailwind: boolean;
+  fonts: FontConfig[];
+  viewerToolbar: boolean;
   files: Record<string, string>;
   updatedAt: number;
 }

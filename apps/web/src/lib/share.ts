@@ -44,18 +44,28 @@ export async function shareProject(options: ShareOptions): Promise<Share> {
   const snapshot = toSnapshot(project, files);
 
   if (isCloudEnabled()) {
-    const guest = await getGuestIdentity();
-    const share = await publishToCloud({
-      project,
-      snapshot,
-      visibility: options.visibility,
-      expiresAt: options.expiresAt,
-      guestId: guest.id,
-    });
+    try {
+      const guest = await getGuestIdentity();
+      const share = await publishToCloud({
+        project,
+        snapshot,
+        visibility: options.visibility,
+        expiresAt: options.expiresAt,
+        guestId: guest.id,
+      });
 
-    if (share) {
-      useWorkspace.getState().updateSettings({});
-      return share;
+      if (share) {
+        useWorkspace.getState().updateSettings({});
+        return share;
+      }
+    } catch (cause) {
+      /*
+       * A short link needs the cloud. If that fails — a missing table, an RLS
+       * policy that blocks the insert, or just being offline — fall back to a
+       * self-contained link so sharing still works. The real reason is logged
+       * for anyone setting the backend up.
+       */
+      console.warn('Cloud publish failed; using a self-contained link instead.', cause);
     }
   }
 

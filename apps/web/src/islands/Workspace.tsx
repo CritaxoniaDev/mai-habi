@@ -18,6 +18,7 @@ import { BottomPanel } from '../components/workspace/BottomPanel';
 import { CommandPalette } from '../components/CommandPalette';
 import { ShareDialog } from '../components/dialogs/ShareDialog';
 import { SettingsDialog } from '../components/dialogs/SettingsDialog';
+import { FontsDialog } from '../components/dialogs/FontsDialog';
 import { PromptDialog } from '../components/dialogs/PromptDialog';
 import { OnboardingWelcome } from '../components/OnboardingWelcome';
 
@@ -153,6 +154,7 @@ export default function Workspace({ projectId }: { projectId: string }) {
       <CommandPalette />
       <ShareDialog />
       <SettingsDialog />
+      <FontsDialog />
       <PromptDialog />
       <OnboardingWelcome />
       <Toaster />

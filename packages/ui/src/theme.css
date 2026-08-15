@@ -225,6 +225,7 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --duration-fast: 120ms;
   --duration-normal: 180ms;
+  --duration-slow: 240ms;
 }
 
 /*

@@ -1,4 +1,6 @@
+import type { FontConfig } from '@mai-habi/types';
 import { ALLOWED_PACKAGES, TAILWIND_URL } from './runtime';
+import { cssFontFamily, googleFontsHref } from './fonts';
 
 /**
  * Builds the document the preview iframe runs.
@@ -15,9 +17,42 @@ export interface PreviewOptions {
   /** Aggregated project CSS. */
   css: string;
   tailwind: boolean;
+  /** Google Fonts loaded into the document; empty when the project uses none. */
+  fonts?: FontConfig[];
   /** Absolute origin serving the platform React runtime. */
   origin: string;
   title?: string;
+}
+
+/**
+ * The `<head>` markup that loads the chosen Google Fonts and, if one is marked
+ * as the default, applies it to the document.
+ *
+ * The default is published as the `--font-body` custom property *and* as a
+ * zero-specificity `:where(html)` rule. The variable is what lets the starter
+ * templates react to a font change — their stylesheets read
+ * `font-family: var(--font-body, <their own stack>)`, so choosing a font swaps
+ * it in and choosing none leaves their original stack untouched. The `:where`
+ * rule covers projects that set no body font at all, and both lose to any real
+ * selector the project writes.
+ */
+function fontMarkup(fonts: FontConfig[]): string {
+  const href = googleFontsHref(fonts);
+  if (!href) return '';
+
+  const links =
+    '<link rel="preconnect" href="https://fonts.googleapis.com" />' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />' +
+    `<link rel="stylesheet" href="${escapeHtml(href)}" />`;
+
+  // The last font marked as default wins, matching how the picker enforces one.
+  const preferred = [...fonts].reverse().find((font) => font.defaultBody && font.family.trim());
+  const stack = preferred ? `${cssFontFamily(preferred.family)},system-ui,sans-serif` : '';
+  const rule = preferred
+    ? `<style>:root{--font-body:${stack}}:where(html){font-family:var(--font-body)}</style>`
+    : '';
+
+  return `${links}${rule}`;
 }
 
 /** Runs inside the preview document. Serialised with `Function.toString()`. */
@@ -104,6 +139,8 @@ export function buildPreviewDocument(options: PreviewOptions): string {
     ? `<script src="${options.origin}${TAILWIND_URL}"></script>`
     : '';
 
+  const fonts = fontMarkup(options.fonts ?? []);
+
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -113,6 +150,7 @@ export function buildPreviewDocument(options: PreviewOptions): string {
     <script>${BRIDGE_SOURCE}</script>
     <script type="importmap">${importMap(options.origin)}</script>
     ${tailwind}
+    ${fonts}
     <style>${escapeForTag(options.css, 'style')}</style>
   </head>
   <body>

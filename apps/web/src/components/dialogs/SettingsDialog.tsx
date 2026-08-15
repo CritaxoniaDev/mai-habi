@@ -1,5 +1,6 @@
 import { PUBLIC_PACKAGES } from '@mai-habi/compiler';
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -35,6 +36,7 @@ export function SettingsDialog() {
   const settings = project.settings;
   const update = useWorkspace.getState().updateSettings;
   const entryMissing = !files[settings.entryFile];
+  const fontCount = (settings.fonts ?? []).length;
 
   return (
     <Dialog open={open} onOpenChange={(next) => setDialog(next ? 'settings' : null)}>
@@ -75,6 +77,25 @@ export function SettingsDialog() {
                 onCheckedChange={(checked) => update({ tailwind: checked })}
               />
             </div>
+
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <Label>Fonts</Label>
+                <p className="mt-1 text-label font-light text-muted-foreground">
+                  {fontCount === 0
+                    ? 'Add fonts from Google Fonts and use them in your CSS. None are loaded yet.'
+                    : `${fontCount} font${fontCount === 1 ? '' : 's'} loaded into the preview.`}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setDialog('fonts')}
+              >
+                Choose fonts…
+              </Button>
+            </div>
           </section>
 
           <Separator />
@@ -113,6 +134,27 @@ export function SettingsDialog() {
                 id="setting-autocompile"
                 checked={settings.autoCompile}
                 onCheckedChange={(checked) => update({ autoCompile: checked })}
+              />
+            </div>
+          </section>
+
+          <Separator />
+
+          <section className="space-y-3">
+            <SectionHeading>Viewer</SectionHeading>
+
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <Label htmlFor="setting-viewer-toolbar">Viewer toolbar</Label>
+                <p className="mt-1 text-label font-light text-muted-foreground">
+                  Shows the hover-to-reveal toolbar when you open the viewer yourself. A shared link
+                  never shows it — whoever opens it sees only your app.
+                </p>
+              </div>
+              <Switch
+                id="setting-viewer-toolbar"
+                checked={settings.viewerToolbar ?? true}
+                onCheckedChange={(checked) => update({ viewerToolbar: checked })}
               />
             </div>
           </section>

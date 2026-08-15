@@ -14,6 +14,8 @@ export function defaultSettings(): ProjectSettings {
   return {
     entryFile: 'src/main.tsx',
     tailwind: false,
+    fonts: [],
+    viewerToolbar: true,
     tabSize: 2,
     wordWrap: false,
     minimap: false,
@@ -151,6 +153,9 @@ export function toSnapshot(project: Project, files: FileMap): PlaygroundSnapshot
     name: project.name,
     entryFile: project.settings.entryFile,
     tailwind: project.settings.tailwind,
+    // Older projects predate the field; a share must still produce a snapshot.
+    fonts: project.settings.fonts ?? [],
+    viewerToolbar: project.settings.viewerToolbar ?? true,
     files: toSourceMap(files),
     updatedAt: project.updatedAt,
   };

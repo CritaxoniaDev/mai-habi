@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type PaletteMode = 'commands' | 'files';
-export type DialogName = 'share' | 'settings' | 'dependencies' | 'script-picker';
+export type DialogName = 'share' | 'settings' | 'fonts' | 'dependencies' | 'script-picker';
 
 export interface PromptRequest {
   title: string;

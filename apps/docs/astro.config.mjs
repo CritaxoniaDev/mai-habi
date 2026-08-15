@@ -35,8 +35,10 @@ export default defineConfig({
           items: [
             { label: 'Files and imports', slug: 'guides/files-and-imports' },
             { label: 'Styling and Tailwind', slug: 'guides/styling' },
+            { label: 'Fonts', slug: 'guides/fonts' },
             { label: 'Images and assets', slug: 'guides/images' },
             { label: 'Preview, console and errors', slug: 'guides/preview-and-errors' },
+            { label: 'REST client', slug: 'guides/rest-client' },
             { label: 'Sharing', slug: 'guides/sharing' },
             { label: 'Import and export', slug: 'guides/import-and-export' },
             { label: 'Keyboard shortcuts', slug: 'guides/keyboard' },

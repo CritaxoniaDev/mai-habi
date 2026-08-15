@@ -26,6 +26,8 @@ import {
   Settings,
   Share2,
   Sun,
+  Type,
+  Webhook,
   Wind,
 } from 'lucide-react';
 import { useUi } from '../state/ui';
@@ -84,6 +86,16 @@ export function CommandPalette() {
                 )}
               >
                 <Wind /> {tailwind ? 'Disable Tailwind CSS' : 'Enable Tailwind CSS'}
+              </CommandItem>
+              <CommandItem onSelect={runAnd(() => useUi.getState().setDialog('fonts'))}>
+                <Type /> Fonts…
+              </CommandItem>
+              <CommandItem
+                onSelect={runAnd(() => {
+                  window.location.href = '/rest';
+                })}
+              >
+                <Webhook /> REST client
               </CommandItem>
               <CommandItem onSelect={runAnd(() => useUi.getState().setDialog('settings'))}>
                 <Settings /> Project settings

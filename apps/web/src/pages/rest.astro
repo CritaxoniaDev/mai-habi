@@ -1,0 +1,13 @@
+---
+import Base from '../layouts/Base.astro';
+import RestClient from '../islands/RestClient';
+
+/*
+ * A standalone tool, not tied to any project. The store persists per browser,
+ * so the composed request and history survive between visits.
+ */
+---
+
+<Base title="REST client — Playground" bodyClass="h-screen overflow-hidden">
+  <RestClient client:only="react" />
+</Base>

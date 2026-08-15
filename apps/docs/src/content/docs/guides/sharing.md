@@ -40,3 +40,13 @@ signing in makes *never* the sensible default because you can revoke it later.
 Your application, not the playground. The viewer is its own small module: it
 does not load Monaco, the file explorer or the editor's state management. It
 compiles your project in their browser and renders it.
+
+## The viewer toolbar
+
+A **shared link shows only your application** — no toolbar, no chrome. Whoever
+opens it sees the running app and nothing else.
+
+The viewer's controls — refresh, device presets, fullscreen — appear only when
+you open the viewer of your *own* project, in a small toolbar that floats at the
+top and hides itself behind a handle. You can turn even that off in **Project
+settings → Viewer → Viewer toolbar**.

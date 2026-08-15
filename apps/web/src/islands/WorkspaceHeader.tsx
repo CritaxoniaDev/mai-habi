@@ -22,6 +22,7 @@ import {
   Play,
   RotateCw,
   Settings,
+  Webhook,
 } from 'lucide-react';
 import { useWorkspace } from '../state/workspace';
 import { useUi } from '../state/ui';
@@ -173,6 +174,11 @@ export default function WorkspaceHeader() {
                 }}
               >
                 <Download /> Export as ZIP
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="/rest">
+                  <Webhook /> REST client
+                </a>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => useUi.getState().setDialog('settings')}>
                 <Settings /> Project settings

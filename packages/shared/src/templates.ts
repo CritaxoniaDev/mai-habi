@@ -14,7 +14,7 @@ body {
 }
 
 body {
-  font-family: Geist, Inter, system-ui, sans-serif;
+  font-family: var(--font-body, Geist, Inter, system-ui, sans-serif);
   font-weight: 300;
   color: #171717;
   background: #ffffff;
@@ -177,7 +177,7 @@ body {
 }
 
 body {
-  font-family: Geist, Inter, system-ui, sans-serif;
+  font-family: var(--font-body, Geist, Inter, system-ui, sans-serif);
   font-weight: 300;
 }
 `;
@@ -215,7 +215,7 @@ body {
 }
 
 body {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif);
   color: #172033;
   background: #f7f8fc;
 }
@@ -380,7 +380,7 @@ body {
 }
 
 body {
-  font-family: Geist, Inter, system-ui, sans-serif;
+  font-family: var(--font-body, Geist, Inter, system-ui, sans-serif);
   font-weight: 300;
   color: #171717;
   background: #ffffff;
