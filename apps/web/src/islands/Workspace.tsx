@@ -27,7 +27,7 @@ type Layout = 'mobile' | 'tablet' | 'desktop';
 /**
  * The interactive region of the editor.
  *
- * The page around it stays static Astro. Explorer, tabs, Monaco and the bottom
+ * The page around it stays static. Explorer, tabs, Monaco and the bottom
  * panel share one hydration root because the resizable layout couples them;
  * splitting them would mean re-implementing panel sizing across island
  * boundaries for no benefit.

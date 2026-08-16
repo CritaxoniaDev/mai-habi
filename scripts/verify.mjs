@@ -26,9 +26,11 @@ async function load(entry) {
     external: ['esbuild-wasm'],
     logLevel: 'silent',
     define: {
-      'import.meta.env.PUBLIC_APP_ORIGIN': '"https://play.example.com"',
-      'import.meta.env.PUBLIC_SUPABASE_URL': '""',
-      'import.meta.env.PUBLIC_SUPABASE_ANON_KEY': '""',
+      // The web app is built by Next.js, so the shared config reads
+      // `process.env.NEXT_PUBLIC_*`. Inject the test origin under those names.
+      'process.env.NEXT_PUBLIC_APP_ORIGIN': '"https://play.example.com"',
+      'process.env.NEXT_PUBLIC_SUPABASE_URL': '""',
+      'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': '""',
     },
   });
 
@@ -569,8 +571,20 @@ check('cloud stays disabled without configuration', () => shared.isCloudEnabled(
 
 check('every template compiles', async () => {
   for (const template of shared.TEMPLATES) {
-    const entry = template.settings.entryFile;
-    const result = await compileFixture(template.files, entry);
+    // Mirror the app's prepareCompile: detect the entry, and synthesise a mount
+    // when the template has none (e.g. the Next.js page-only template).
+    const fileMap = shared.filesFromRecord(template.files);
+    const sources = { ...template.files };
+    let entry = fs.detectEntryFile(fileMap, template.settings.entryFile);
+
+    if (!entry) {
+      const generated = fs.synthesiseEntry(fileMap);
+      if (!generated) throw new Error(`${template.id}: no entry and nothing to synthesise`);
+      sources[generated.path] = generated.contents;
+      entry = generated.path;
+    }
+
+    const result = await compileFixture(sources, entry);
     if (!result.ok) throw new Error(`${template.id}: ${result.errors.join('; ')}`);
   }
   return true;
@@ -603,8 +617,81 @@ check('starter samples show a local component import', () => {
   return true;
 });
 
-check('templates declare an entry file that exists', () =>
-  shared.TEMPLATES.every((template) => template.files[template.settings.entryFile] !== undefined));
+check('the viewer compiles a no-entry project from its snapshot', async () => {
+  // A shared link / the viewer compiles from a snapshot: a flat source map plus a
+  // configured entry, which is empty for a Next.js project. The mount must be
+  // synthesised before compiling, or it fails with `Entry file "" was not found.`
+  const template = shared.getTemplate('next');
+  const sources = shared.toSourceMap(shared.filesFromRecord(template.files));
+  let entry = fs.detectEntryFile(shared.filesFromRecord(sources), template.settings.entryFile);
+
+  if (!entry) {
+    const generated = fs.synthesiseEntry(shared.filesFromRecord(sources));
+    if (!generated) throw new Error('no mount could be synthesised for the snapshot');
+    sources[generated.path] = generated.contents;
+    entry = generated.path;
+  }
+
+  const result = await compileFixture(sources, entry);
+  if (!result.ok) throw new Error(result.errors.join('; '));
+  return true;
+});
+
+check('a Next.js page compiles through the next/* shims', async () => {
+  const files = {
+    'app/page.tsx': `'use client';
+import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter, usePathname } from 'next/navigation';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export default function Page() {
+  const [n, setN] = useState(0);
+  const router = useRouter();
+  return (
+    <main className={inter.className}>
+      <Image src="/logo.png" alt="" width={40} height={40} />
+      <Link href="/about">About {usePathname()}</Link>
+      <button onClick={() => { setN(n + 1); router.push('/next'); }}>{n}</button>
+    </main>
+  );
+}
+`,
+  };
+  const generated = fs.synthesiseEntry(shared.filesFromRecord(files));
+  if (!generated) throw new Error('the Next page did not yield a mountable root');
+  const result = await compileFixture({ ...files, [generated.path]: generated.contents }, generated.path);
+  if (!result.ok) throw new Error(result.errors.join('; '));
+  return true;
+});
+
+check('server-only next modules are rejected with a clear message', async () => {
+  const files = {
+    'app/page.tsx': `import { cookies } from 'next/headers';
+export default function Page() { return <p>{String(cookies())}</p>; }
+`,
+  };
+  const generated = fs.synthesiseEntry(shared.filesFromRecord(files));
+  const result = await compileFixture({ ...files, [generated.path]: generated.contents }, generated.path);
+  if (result.ok) throw new Error('expected next/headers to be rejected');
+  if (!result.errors.some((text) => /server/i.test(text))) {
+    throw new Error(`error did not explain the server-only limitation: ${result.errors.join('; ')}`);
+  }
+  return true;
+});
+
+check('templates declare a usable entry', () =>
+  shared.TEMPLATES.every((template) => {
+    // An explicit entry must exist. An empty entry means the platform
+    // synthesises the mount, which only works if a root component is detectable.
+    if (template.settings.entryFile) {
+      return template.files[template.settings.entryFile] !== undefined;
+    }
+    return fs.synthesiseEntry(shared.filesFromRecord(template.files)) !== null;
+  }));
 
 check('only the tailwind template enables tailwind', () => {
   const enabled = shared.TEMPLATES.filter((template) => template.settings.tailwind);

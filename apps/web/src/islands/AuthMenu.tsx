@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { EDITOR_ORIGIN, signInWithEmail, signInWithGitHub, signOut } from '@mai-habi/shared';
 import {

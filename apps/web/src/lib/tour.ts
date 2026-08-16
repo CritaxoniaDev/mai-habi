@@ -1,6 +1,7 @@
 import { driver, type DriveStep } from 'driver.js';
-import 'driver.js/dist/driver.css';
-import '../styles/tour.css';
+
+// The tour stylesheets (driver.js and our overrides) are global CSS, which Next
+// only allows to be imported from `_app`; they are loaded there instead.
 
 import { markTourSeen } from './onboarding';
 

@@ -1,3 +1,5 @@
+'use client';
+
 import { ThemeToggle, TooltipProvider } from '@mai-habi/ui';
 
 /**

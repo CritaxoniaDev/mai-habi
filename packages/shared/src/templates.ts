@@ -527,11 +527,136 @@ const BLANK: ProjectTemplate = {
   },
 };
 
+const NEXT_PAGE_TSX = `'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+
+/*
+ * A Next.js App Router page. The playground has no server, so it renders this
+ * page component on the client — Server Components that fetch data, API routes
+ * and \`next build\` do not run here, but most client pages work as-is. \`next/*\`
+ * modules like next/link, next/image, next/navigation and next/font are shimmed
+ * to their browser equivalents.
+ */
+export default function Page() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <main className="page">
+      <span className="badge">app/page.tsx</span>
+      <h1>Next.js, in the browser</h1>
+      <p>
+        This page is compiled and rendered entirely on your machine. Edit it and
+        the preview updates instantly.
+      </p>
+
+      <button className="counter" onClick={() => setCount((value) => value + 1)}>
+        Clicked {count} {count === 1 ? 'time' : 'times'}
+      </button>
+
+      <Link className="link" href="https://nextjs.org/docs" target="_blank" rel="noreferrer">
+        Read the Next.js docs →
+      </Link>
+    </main>
+  );
+}
+`;
+
+const NEXT_GLOBALS_CSS = `:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: #0a0a0a;
+  color: #fafafa;
+}
+
+.page {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 6rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.badge {
+  font: 500 0.75rem/1 ui-monospace, monospace;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #262626;
+  color: #a3a3a3;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  letter-spacing: -0.03em;
+}
+
+p {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #a3a3a3;
+}
+
+.counter {
+  font: inherit;
+  cursor: pointer;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.6rem;
+  border: 1px solid #262626;
+  background: #fafafa;
+  color: #0a0a0a;
+  transition: transform 0.1s ease;
+}
+
+.counter:active {
+  transform: scale(0.97);
+}
+
+.link {
+  color: #fafafa;
+  text-decoration: none;
+  border-bottom: 1px solid #404040;
+}
+
+.link:hover {
+  border-color: #fafafa;
+}
+`;
+
+/*
+ * Next.js. There is no server in the playground, so a real Next app cannot run
+ * end to end — instead the page component is mounted and rendered on the client.
+ * An empty entryFile lets the platform synthesise the mount (see synthesiseEntry).
+ */
+const NEXT: ProjectTemplate = {
+  id: 'next',
+  name: 'Next.js',
+  description: 'An App Router page, client-rendered in the browser.',
+  settings: { entryFile: '', tailwind: false },
+  files: {
+    'app/page.tsx': NEXT_PAGE_TSX,
+    'app/globals.css': NEXT_GLOBALS_CSS,
+  },
+};
+
 export const TEMPLATES: ProjectTemplate[] = [
   REACT_TS,
   REACT_JS,
   REACT_MOTION,
   REACT_TAILWIND,
+  NEXT,
   HTML_CSS_JS,
   BLANK,
 ];

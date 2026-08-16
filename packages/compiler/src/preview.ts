@@ -22,6 +22,13 @@ export interface PreviewOptions {
   /** Absolute origin serving the platform React runtime. */
   origin: string;
   title?: string;
+  /**
+   * CSP nonce for the scripts this document emits. A `srcdoc` iframe inherits
+   * the embedding page's Content-Security-Policy, so when that policy is
+   * nonce-based the preview's own scripts must carry the same nonce or the
+   * browser blocks them. Omitted when the host page sets no CSP.
+   */
+  nonce?: string;
 }
 
 /**
@@ -135,8 +142,12 @@ function importMap(origin: string): string {
 }
 
 export function buildPreviewDocument(options: PreviewOptions): string {
+  // A nonce-based host CSP is inherited by this srcdoc document, so every script
+  // it emits has to carry the nonce to run.
+  const nonce = options.nonce ? ` nonce="${options.nonce}"` : '';
+
   const tailwind = options.tailwind
-    ? `<script src="${options.origin}${TAILWIND_URL}"></script>`
+    ? `<script${nonce} src="${options.origin}${TAILWIND_URL}"></script>`
     : '';
 
   const fonts = fontMarkup(options.fonts ?? []);
@@ -147,15 +158,15 @@ export function buildPreviewDocument(options: PreviewOptions): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(options.title ?? 'Preview')}</title>
-    <script>${BRIDGE_SOURCE}</script>
-    <script type="importmap">${importMap(options.origin)}</script>
+    <script${nonce}>${BRIDGE_SOURCE}</script>
+    <script type="importmap"${nonce}>${importMap(options.origin)}</script>
     ${tailwind}
     ${fonts}
     <style>${escapeForTag(options.css, 'style')}</style>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module">${escapeForTag(options.js, 'script')}</script>
+    <script type="module"${nonce}>${escapeForTag(options.js, 'script')}</script>
   </body>
 </html>`;
 }

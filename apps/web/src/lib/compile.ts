@@ -1,6 +1,6 @@
 import type { FileMap, Project } from '@mai-habi/types';
 import { detectEntryFile, synthesiseEntry } from '@mai-habi/filesystem';
-import { toSourceMap } from '@mai-habi/shared';
+import { filesFromRecord, toSourceMap } from '@mai-habi/shared';
 import { CompilerClient, type CompileResult } from '@mai-habi/compiler';
 
 /**
@@ -51,6 +51,32 @@ export function prepareCompile(project: Project, files: FileMap): PreparedCompil
 
   return {
     files: { ...sources, [generated.path]: generated.contents },
+    entry: generated.path,
+  };
+}
+
+/**
+ * The same entry resolution for a snapshot, which the viewer and shared links
+ * compile from. A snapshot already carries a flat source map and a configured
+ * entry rather than a FileMap; when that entry is missing — as it is for a
+ * Next.js project or an import with no explicit mount — a mount is synthesised,
+ * exactly as the editor does. Without this the viewer would fail with
+ * `Entry file "" was not found.`
+ */
+export function prepareSnapshotCompile(
+  files: Record<string, string>,
+  entryFile: string,
+): PreparedCompile | null {
+  const fileMap = filesFromRecord(files);
+  const entry = detectEntryFile(fileMap, entryFile);
+
+  if (entry) return { files, entry };
+
+  const generated = synthesiseEntry(fileMap);
+  if (!generated) return null;
+
+  return {
+    files: { ...files, [generated.path]: generated.contents },
     entry: generated.path,
   };
 }

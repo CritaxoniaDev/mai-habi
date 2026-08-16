@@ -28,7 +28,11 @@ export const THEME_INIT_SCRIPT = `
 
     var root = document.documentElement;
 
-    root.classList.add(isDark ? "dark" : "light");
+    // Toggle rather than add, so the opposite class can never linger if this
+    // runs against a root that already carries one. Mirrors the controller's
+    // paint(), keeping the pre-hydration frame and the hydrated state identical.
+    root.classList.toggle("dark", isDark);
+    root.classList.toggle("light", !isDark);
     root.style.colorScheme = isDark ? "dark" : "light";
     root.dataset.themeMode = mode;
     root.dataset.theme = isDark ? "dark" : "light";

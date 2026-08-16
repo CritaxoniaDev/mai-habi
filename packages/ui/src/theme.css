@@ -175,6 +175,35 @@
   --color-lang-markdown: var(--lang-markdown);
   --color-lang-image: var(--lang-image);
   --color-lang-config: var(--lang-config);
+
+  /*
+   * shadcn/ui token aliases.
+   *
+   * shadcn components reference `primary`, `muted`, `card`, `popover`,
+   * `destructive`, `input` and `ring`; these map them onto the design system
+   * above so anything added with the shadcn CLI is on-brand and theme-aware,
+   * without touching the base tokens `verify` enforces. `accent`/`border`/
+   * `background`/`foreground`/`muted-foreground` already exist and carry the
+   * same meaning, so they are reused as-is.
+   *
+   * `secondary` is deliberately NOT aliased: the type scale already defines
+   * `--text-secondary` (13px), and a `--color-secondary` would make the
+   * `text-secondary` utility resolve to a colour instead of that size —
+   * painting body text in the surface colour and hiding it against the
+   * background in both themes. shadcn components use `surface-secondary`
+   * directly instead (see badge.tsx).
+   */
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-foreground);
+  --color-muted: var(--surface-secondary);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--foreground);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--accent-foreground);
+  --color-input: var(--border);
+  --color-ring: var(--focus-ring);
 }
 
 @theme {

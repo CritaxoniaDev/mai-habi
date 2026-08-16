@@ -4,14 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "astro dev --port 4321",
-    "build": "astro build",
-    "preview": "astro preview --port 4321",
-    "typecheck": "astro check"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "preview": "next start",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@astrojs/react": "^4.2.0",
-    "@astrojs/vercel": "^8.0.4",
     "@fontsource-variable/geist": "^5.1.1",
     "@fontsource-variable/geist-mono": "^5.1.1",
     "@mai-habi/compiler": "*",
@@ -20,13 +19,13 @@
     "@mai-habi/types": "*",
     "@mai-habi/ui": "*",
     "@tailwindcss/browser": "^4.3.3",
-    "@tailwindcss/vite": "^4.0.0",
-    "astro": "^5.2.5",
+    "@tailwindcss/postcss": "^4.0.0",
     "driver.js": "^1.8.0",
     "emmet-monaco-es": "^5.7.0",
     "esbuild-wasm": "^0.28.2",
     "lucide-react": "^0.474.0",
     "monaco-editor": "^0.52.2",
+    "next": "16.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-resizable-panels": "^2.1.7",
@@ -34,7 +33,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.4",
+    "@types/node": "^22.10.0",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "typescript": "^5.7.3"

@@ -1,6 +1,7 @@
 import type { Loader, Message, OutputFile, Plugin } from 'esbuild-wasm';
 import type { CompileDiagnostic, CompileFailure, CompileSuccess } from './protocol';
 import { ALLOWED_PACKAGES, WASM_URL, isAllowedPackage, unsupportedImportMessage } from './runtime';
+import { nextShimSource, serverOnlyNextMessage } from './next-shims';
 
 /**
  * The browser-side bundler.
@@ -10,6 +11,9 @@ import { ALLOWED_PACKAGES, WASM_URL, isAllowedPackage, unsupportedImportMessage 
  */
 
 const NAMESPACE = 'project';
+
+/** Virtual modules that stand in for `next/*` imports (see next-shims.ts). */
+const NEXT_SHIM_NAMESPACE = 'mai-habi-next-shim';
 
 const EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json', '.css', '.html', '.htm'];
 
@@ -386,7 +390,24 @@ export function virtualFilesystem(files: Record<string, string>, entry: string):
           return { path: args.path, external: true };
         }
 
+        // Next.js: server-only modules cannot run in the browser preview.
+        const serverOnly = serverOnlyNextMessage(args.path);
+        if (serverOnly) return { errors: [{ text: serverOnly }] };
+
+        // Next.js: client-renderable `next/*` modules resolve to a browser shim.
+        if (nextShimSource(args.path) !== undefined) {
+          return { path: args.path, namespace: NEXT_SHIM_NAMESPACE };
+        }
+
         return { errors: [{ text: unsupportedImportMessage(args.path) }] };
+      });
+
+      build.onLoad({ filter: /.*/, namespace: NEXT_SHIM_NAMESPACE }, (args) => {
+        const contents = nextShimSource(args.path);
+        if (contents === undefined) {
+          return { errors: [{ text: `No Next.js shim for "${args.path}".` }] };
+        }
+        return { contents, loader: 'js', resolveDir: '/' };
       });
 
       build.onLoad({ filter: /.*/, namespace: NAMESPACE }, (args) => {

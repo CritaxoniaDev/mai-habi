@@ -1,5 +1,3 @@
-import type { APIRoute } from 'astro';
-
 /**
  * Server-side request proxy for the built-in REST client.
  *
@@ -13,8 +11,6 @@ import type { APIRoute } from 'astro';
  * public hostname that *resolves* to an internal address (DNS rebinding) or a
  * redirect into one — harden with DNS pinning before exposing this widely.
  */
-
-export const prerender = false;
 
 interface ProxyRequest {
   method?: string;
@@ -78,7 +74,7 @@ function decodeBase64(value: string): Uint8Array {
   return bytes;
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export async function POST(request: Request): Promise<Response> {
   let payload: ProxyRequest;
   try {
     payload = (await request.json()) as ProxyRequest;
@@ -173,4 +169,4 @@ export const POST: APIRoute = async ({ request }) => {
     truncated,
     durationMs,
   });
-};
+}

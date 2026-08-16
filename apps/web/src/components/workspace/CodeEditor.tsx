@@ -19,12 +19,6 @@ import 'monaco-editor/esm/vs/language/json/monaco.contribution';
 
 import { emmetHTML, emmetCSS, emmetJSX } from 'emmet-monaco-es';
 
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
-import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
-import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
-import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
-
 import type { Problem } from '@mai-habi/types';
 import { isImagePath, languageForPath, mimeForPath } from '@mai-habi/filesystem';
 import { useTheme } from '@mai-habi/ui';
@@ -38,13 +32,43 @@ declare global {
   }
 }
 
+/*
+ * The bundler resolves each worker from a static `new URL(..., import.meta.url)`
+ * — the Vite `?worker` import suffix is not available under Next's bundler, but
+ * this form is understood by both webpack and Turbopack. Every path must be a
+ * literal for that detection to fire, so the labels map to explicit `new Worker`
+ * calls rather than a shared factory.
+ */
 window.MonacoEnvironment = {
   getWorker(_id, label) {
-    if (label === 'json') return new jsonWorker();
-    if (label === 'css' || label === 'scss' || label === 'less') return new cssWorker();
-    if (label === 'html' || label === 'handlebars' || label === 'razor') return new htmlWorker();
-    if (label === 'typescript' || label === 'javascript') return new tsWorker();
-    return new editorWorker();
+    if (label === 'json') {
+      return new Worker(
+        new URL('monaco-editor/esm/vs/language/json/json.worker.js', import.meta.url),
+        { type: 'module' },
+      );
+    }
+    if (label === 'css' || label === 'scss' || label === 'less') {
+      return new Worker(
+        new URL('monaco-editor/esm/vs/language/css/css.worker.js', import.meta.url),
+        { type: 'module' },
+      );
+    }
+    if (label === 'html' || label === 'handlebars' || label === 'razor') {
+      return new Worker(
+        new URL('monaco-editor/esm/vs/language/html/html.worker.js', import.meta.url),
+        { type: 'module' },
+      );
+    }
+    if (label === 'typescript' || label === 'javascript') {
+      return new Worker(
+        new URL('monaco-editor/esm/vs/language/typescript/ts.worker.js', import.meta.url),
+        { type: 'module' },
+      );
+    }
+    return new Worker(
+      new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url),
+      { type: 'module' },
+    );
   },
 };
 

@@ -281,7 +281,7 @@ export function registerDesignChecks(check) {
     const init = fs.readFileSync(path.join(ROOT, 'packages/ui/src/theme/init.ts'), 'utf8');
     return (
       init.includes('prefers-color-scheme: dark') &&
-      init.includes('classList.add') &&
+      init.includes('classList.toggle') &&
       init.includes('colorScheme')
     );
   });
@@ -306,7 +306,10 @@ export function registerDesignChecks(check) {
       for (const systemDark of [true, false]) {
         const classes = new Set();
         const root = {
-          classList: { add: (name) => classes.add(name) },
+          classList: {
+            add: (name) => classes.add(name),
+            toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)),
+          },
           style: {},
           dataset: {},
         };
@@ -349,7 +352,10 @@ export function registerDesignChecks(check) {
 
     const classes = new Set();
     const root = {
-      classList: { add: (name) => classes.add(name) },
+      classList: {
+        add: (name) => classes.add(name),
+        toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)),
+      },
       style: {},
       dataset: {},
     };
@@ -372,10 +378,20 @@ export function registerDesignChecks(check) {
   });
 
   check('every layout runs the pre-paint script inline', () => {
-    for (const layout of [
-      'apps/web/src/layouts/Base.astro',
-      'apps/marketing/src/layouts/Base.astro',
-    ]) {
+    // The web app is Next.js: its root layout injects the script through
+    // dangerouslySetInnerHTML. The marketing site is still Astro (is:inline).
+    const nextLayout = fs.readFileSync(
+      path.join(ROOT, 'apps/web/src/app/layout.tsx'),
+      'utf8',
+    );
+    if (
+      !nextLayout.includes('THEME_INIT_SCRIPT') ||
+      !nextLayout.includes('dangerouslySetInnerHTML')
+    ) {
+      throw new Error('apps/web/src/app/layout.tsx does not inline the theme script');
+    }
+
+    for (const layout of ['apps/marketing/src/layouts/Base.astro']) {
       const contents = fs.readFileSync(path.join(ROOT, layout), 'utf8');
       if (!contents.includes('is:inline') || !contents.includes('THEME_INIT_SCRIPT')) {
         throw new Error(`${layout} does not inline the theme script`);

@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DeviceId, PlaygroundSnapshot } from '@mai-habi/types';
 import { DEVICE_PRESETS } from '@mai-habi/types';
@@ -7,6 +9,7 @@ import {
   buildPreviewDocument,
   isPreviewMessage,
   type CompileDiagnostic,
+  type CompileResult,
 } from '@mai-habi/compiler';
 import {
   Button,
@@ -33,7 +36,8 @@ import {
   MoreHorizontal,
   RotateCw,
 } from 'lucide-react';
-import { getCompiler } from '../lib/compile';
+import { getCompiler, prepareSnapshotCompile } from '../lib/compile';
+import { cspNonce } from '../lib/csp-nonce';
 import { resolveViewerSource } from '../lib/viewer-source';
 import { SourceView } from '../components/viewer/SourceView';
 
@@ -124,11 +128,59 @@ export default function ViewerShell({ id }: { id: string }) {
       editable: source.editable,
     });
 
-    const result = await getCompiler().compile(
-      source.snapshot.files,
-      source.snapshot.entryFile,
-      true,
-    );
+    // Resolve the entry the same way the editor does: a Next.js project (or any
+    // import with no explicit mount) has an empty entry, so a mount is
+    // synthesised rather than compiling "" and failing.
+    const prepared = prepareSnapshotCompile(source.snapshot.files, source.snapshot.entryFile);
+    if (!prepared) {
+      setState({
+        status: 'failed',
+        snapshot: source.snapshot,
+        sourceVisible: source.sourceVisible,
+        editable: source.editable,
+        js: '',
+        css: '',
+        errors: [
+          {
+            message:
+              'This project has no entry file. Add index.html, src/main.tsx, or a component the platform can mount.',
+            location: null,
+          },
+        ],
+      });
+      setGeneration((value) => value + 1);
+      return;
+    }
+
+    let result: CompileResult;
+    try {
+      result = await getCompiler().compile(prepared.files, prepared.entry, true);
+    } catch (error) {
+      // A newer load() started a fresh compile and superseded this one. That
+      // load owns the state now, so this one bows out silently rather than
+      // surfacing the cancellation as an error. (React StrictMode runs the
+      // effect twice in development, which is a common way to hit this.)
+      if (error instanceof Error && error.name === 'SupersededError') return;
+
+      // A genuine failure — e.g. the worker could not start. Show it as a
+      // failed build instead of letting it reach the error overlay.
+      setState({
+        status: 'failed',
+        snapshot: source.snapshot,
+        sourceVisible: source.sourceVisible,
+        editable: source.editable,
+        js: '',
+        css: '',
+        errors: [
+          {
+            message: error instanceof Error ? error.message : 'The compiler could not start.',
+            location: null,
+          },
+        ],
+      });
+      setGeneration((value) => value + 1);
+      return;
+    }
 
     setState({
       status: result.ok ? 'ready' : 'failed',
@@ -186,6 +238,7 @@ export default function ViewerShell({ id }: { id: string }) {
         fonts: state.snapshot?.fonts ?? [],
         origin: window.location.origin,
         title: state.snapshot?.name,
+        nonce: cspNonce(),
       });
     }
     return buildPlaceholderDocument(

@@ -23,7 +23,23 @@ const ENTRY_CANDIDATES = [
   'main.js',
 ];
 
-const ROOT_COMPONENTS = ['src/App.tsx', 'src/App.jsx', 'App.tsx', 'App.jsx'];
+const ROOT_COMPONENTS = [
+  'src/App.tsx',
+  'src/App.jsx',
+  'App.tsx',
+  'App.jsx',
+  // Next.js projects. A page is a default-exported React component, so the
+  // playground can mount it directly and render it in the browser — there is no
+  // server, so this is a client-side render of the page (see synthesiseEntry).
+  'app/page.tsx',
+  'app/page.jsx',
+  'src/app/page.tsx',
+  'src/app/page.jsx',
+  'pages/index.tsx',
+  'pages/index.jsx',
+  'src/pages/index.tsx',
+  'src/pages/index.jsx',
+];
 
 /** The module the compiler starts from. */
 export function detectEntryFile(files: FileMap, configured?: string): string | null {

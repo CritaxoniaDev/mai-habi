@@ -8,6 +8,7 @@ import {
 } from '@mai-habi/compiler';
 import { cn } from '@mai-habi/ui';
 import { useWorkspace } from '../../state/workspace';
+import { cspNonce } from '../../lib/csp-nonce';
 
 /** Stable empty reference so the selector never churns re-renders. */
 const NO_FONTS: FontConfig[] = [];
@@ -43,6 +44,7 @@ export function PreviewPane({ visible }: { visible: boolean }) {
       fonts,
       origin: window.location.origin,
       title: name,
+      nonce: cspNonce(),
     });
   }, [preview, tailwind, fonts, name, compileState]);
 

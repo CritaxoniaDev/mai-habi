@@ -1,7 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["react", "react-dom"]
+    "types": ["react", "react-dom"],
+    "paths": {
+      "@mai-habi/ui/components/*": ["./src/components/*"],
+      "@mai-habi/ui/lib/*": ["./src/lib/*"],
+      "@mai-habi/ui/hooks/*": ["./src/hooks/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

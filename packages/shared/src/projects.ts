@@ -118,6 +118,12 @@ export function pickInitialTabs(files: FileMap): string[] {
     'src/App.jsx',
     'src/styles.css',
     'src/main.tsx',
+    // Next.js projects open the page a user actually edits.
+    'app/page.tsx',
+    'app/page.jsx',
+    'src/app/page.tsx',
+    'pages/index.tsx',
+    'app/globals.css',
   ];
   const opened = preferred.filter((path) => files[path]?.type === 'file');
   if (opened.length > 0) return opened.slice(0, 2);

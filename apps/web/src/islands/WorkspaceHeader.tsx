@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import type { CompileState, SaveStatus } from '@mai-habi/types';
 import { downloadProject } from '@mai-habi/filesystem';

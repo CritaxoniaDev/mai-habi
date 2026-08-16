@@ -1,3 +1,5 @@
+'use client';
+
 import { Fragment, useEffect, useState } from 'react';
 import {
   Button,
@@ -66,6 +68,7 @@ import {
   type RestResponse,
   type SavedRequest,
 } from '../state/rest';
+import { useFullscreenBody } from '../lib/use-fullscreen-body';
 
 /** Drives the shared name/save dialog. */
 type NamePrompt =
@@ -906,6 +909,10 @@ function BodyEditor() {
  * all persist per browser.
  */
 export default function RestClient() {
+  // The REST client owns the full viewport; it applies the fullscreen body
+  // classes itself so the route can render it directly, without a wrapper.
+  useFullscreenBody();
+
   const method = useRest((state) => state.method);
   const url = useRest((state) => state.url);
   const sending = useRest((state) => state.sending);

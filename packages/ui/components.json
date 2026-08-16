@@ -1,0 +1,24 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/theme.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@mai-habi/ui/components",
+    "ui": "@mai-habi/ui/components",
+    "utils": "@mai-habi/ui/lib/cn",
+    "lib": "@mai-habi/ui/lib",
+    "hooks": "@mai-habi/ui/hooks"
+  },
+  "iconLibrary": "lucide",
+  "registries": {
+    "@extend": "https://ui.extend.ai/r/{name}.json"
+  }
+}

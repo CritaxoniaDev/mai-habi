@@ -56,6 +56,7 @@ export type TemplateId =
   | 'react-js'
   | 'react-motion'
   | 'react-tailwind'
+  | 'next'
   | 'html-css-js'
   | 'blank'
   | 'import';

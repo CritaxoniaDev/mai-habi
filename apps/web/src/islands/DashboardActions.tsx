@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { Button, Toaster } from '@mai-habi/ui';
 import { Plus } from 'lucide-react';
