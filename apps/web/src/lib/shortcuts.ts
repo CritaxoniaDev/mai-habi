@@ -10,8 +10,9 @@ function isModifier(event: KeyboardEvent): boolean {
 /**
  * Global editor shortcuts.
  *
- * Find and replace are deliberately absent — Monaco already owns Cmd+F and
- * Cmd+H whenever the editor has focus.
+ * In-file find and replace are deliberately absent — Monaco already owns Cmd+F
+ * and Cmd+H whenever the editor has focus. Cmd+Shift+F is the project-wide
+ * search, which Monaco does not provide.
  */
 export function useShortcuts(): void {
   useEffect(() => {
@@ -38,6 +39,12 @@ export function useShortcuts(): void {
       if (key === 'p') {
         event.preventDefault();
         ui.setPalette(event.shiftKey ? 'commands' : 'files');
+        return;
+      }
+
+      if (key === 'f' && event.shiftKey) {
+        event.preventDefault();
+        workspace.openSearch();
         return;
       }
 

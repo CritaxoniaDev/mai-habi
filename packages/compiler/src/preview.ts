@@ -64,6 +64,24 @@ function fontMarkup(fonts: FontConfig[]): string {
 
 /** Runs inside the preview document. Serialised with `Function.toString()`. */
 function previewBridge(): void {
+  /*
+   * Publish this document's CSP nonce.
+   *
+   * The host policy is nonce-based and a srcdoc document inherits it, so a
+   * script is only allowed to run if it carries the nonce. The markup emitted
+   * by `buildPreviewDocument` is stamped at build time, but anything the
+   * project itself loads — a CDN <script src>, an inline <script> — is created
+   * by script at runtime and would carry none, so the browser refuses it.
+   * Stashing the nonce here lets the loader stamp those too; see
+   * `externalScript` in bundler.ts.
+   *
+   * This grants nothing beyond the preview: the frame is sandboxed without
+   * `allow-same-origin`, so it runs at an opaque origin and the nonce only
+   * authorises execution inside this throwaway document.
+   */
+  const current = document.currentScript as HTMLScriptElement | null;
+  (window as unknown as { __previewNonce?: string }).__previewNonce = current?.nonce ?? '';
+
   const post = (message: Record<string, unknown>) => {
     try {
       parent.postMessage({ ...message, at: Date.now() }, '*');

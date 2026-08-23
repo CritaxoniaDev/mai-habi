@@ -38,7 +38,9 @@ Signing in is optional and never required to use the editor. It adds:
 - short, durable share links
 - cloud backup
 
-Email links and GitHub are both supported when a backend is configured.
+Sign-in is with GitHub, when a backend is configured. It also unlocks the
+[repository browser](/guides/github/), which is why the authorisation covers
+your repositories.
 
 ## Bringing local projects with you
 

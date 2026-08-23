@@ -39,7 +39,7 @@ export const EDITOR_ORIGIN = clean(
     process.env.NEXT_PUBLIC_EDITOR_ORIGIN ||
     viteEnv?.PUBLIC_APP_ORIGIN ||
     viteEnv?.PUBLIC_EDITOR_ORIGIN,
-  'http://localhost:4321',
+  'http://localhost:3000',
 );
 
 export const SUPABASE_URL = clean(

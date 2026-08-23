@@ -38,6 +38,8 @@ export default defineConfig({
             { label: 'Fonts', slug: 'guides/fonts' },
             { label: 'Images and assets', slug: 'guides/images' },
             { label: 'Preview, console and errors', slug: 'guides/preview-and-errors' },
+            { label: 'Searching a project', slug: 'guides/search' },
+            { label: 'GitHub repositories', slug: 'guides/github' },
             { label: 'REST client', slug: 'guides/rest-client' },
             { label: 'Sharing', slug: 'guides/sharing' },
             { label: 'Import and export', slug: 'guides/import-and-export' },

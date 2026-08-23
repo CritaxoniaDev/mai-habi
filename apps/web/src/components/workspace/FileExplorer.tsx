@@ -63,6 +63,7 @@ function validateName(name: string, siblings: string[]): string | null {
 export function FileExplorer() {
   const files = useWorkspace((state) => state.files);
   const activeTab = useWorkspace((state) => state.activeTab);
+  const newNodeRequest = useWorkspace((state) => state.newNodeRequest);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ src: true });
   const [selected, setSelected] = useState<string | null>(null);
@@ -177,6 +178,29 @@ export function FileExplorer() {
     if (parent) setExpanded((current) => ({ ...current, [parent]: true }));
     setDraft({ parent, type });
   };
+
+  /*
+   * Where a new node belongs, given what is selected: inside a selected folder,
+   * beside a selected file, otherwise at the root. This is the rule the context
+   * menu already follows, applied to requests arriving from elsewhere.
+   */
+  const draftParentForSelection = (): string => {
+    if (!selected) return '';
+
+    const node = store().files[selected];
+    if (!node) return '';
+
+    return node.type === 'directory' ? selected : dirname(selected);
+  };
+
+  useEffect(() => {
+    if (!newNodeRequest) return;
+
+    beginCreate(draftParentForSelection(), newNodeRequest.type);
+    store().consumeNewNodeRequest();
+    // Re-runs per request: the token changes even when the type repeats.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newNodeRequest]);
 
   /** Folders with contents are confirmed before deletion; single files are not. */
   const requestDelete = (path: string) => {
@@ -436,7 +460,7 @@ export function FileExplorer() {
           <>
             {children.map((child, index) =>
               // A continuation line is drawn for this level only while more
-              // siblings follow, which is what turns │ into blank space.
+              // siblings follow; the last child leaves the column blank.
               renderNode(child, [...ancestors, !isLast], !hasDraft && index === children.length - 1),
             )}
             {hasDraft && draft && (
@@ -555,18 +579,42 @@ export function FileExplorer() {
  *
  * `ancestors[i]` is true when the folder at that depth still has siblings
  * below it, which is what decides between a continuation line and blank space.
- * Purely decorative: the tree itself carries `aria-level`, so this is hidden
- * from assistive technology rather than read out as box-drawing characters.
+ *
+ * Drawn with pseudo-elements rather than box-drawing glyphs. A character is
+ * sized by the font, so the vertical strokes only met up when the glyph's line
+ * box happened to match the row height — at other zoom levels they broke into
+ * dashes, and their width drifted with the monospace metrics. These segments
+ * are `self-stretch`, so each spans exactly one row and the line is continuous
+ * down the tree at any size.
+ *
+ * Purely decorative: the tree itself carries `aria-level`, so this stays hidden
+ * from assistive technology rather than being read out as punctuation.
  */
 function TreeGuide({ ancestors, isLast }: { ancestors: boolean[]; isLast: boolean }) {
-  const prefix = ancestors.map((hasMore) => (hasMore ? '│ ' : '  ')).join('');
-
   return (
-    <span
-      aria-hidden="true"
-      className="shrink-0 whitespace-pre font-mono text-micro text-subtle-foreground"
-    >
-      {`${prefix}${isLast ? '└─' : '├─'}`}
+    <span aria-hidden="true" className="flex shrink-0 self-stretch">
+      {ancestors.map((hasMore, depth) => (
+        <span
+          key={depth}
+          className={cn(
+            'relative w-3',
+            // A line continues past this row only while that ancestor has more below it.
+            hasMore &&
+              "before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-border-strong before:content-['']",
+          )}
+        />
+      ))}
+
+      <span
+        className={cn(
+          'relative w-3',
+          // The elbow: down from the top, then out to the right at mid-row.
+          "before:absolute before:left-1/2 before:top-0 before:w-px before:bg-border-strong before:content-['']",
+          // A last child stops at the turn; a middle one carries on to the next row.
+          isLast ? 'before:h-1/2' : 'before:bottom-0',
+          "after:absolute after:left-1/2 after:top-1/2 after:h-px after:w-1/2 after:bg-border-strong after:content-['']",
+        )}
+      />
     </span>
   );
 }
@@ -685,7 +733,7 @@ function InlineInput({
           }
         }}
         className={cn(
-          'h-5 w-full min-w-0 rounded-sm border border-border-strong bg-surface px-1',
+          'h-7 w-full min-w-0 rounded-sm border border-border-strong bg-surface px-1',
           'text-secondary font-light text-foreground outline-none',
           'placeholder:text-muted-foreground',
           'focus-visible:outline-1 focus-visible:outline-focus-ring',

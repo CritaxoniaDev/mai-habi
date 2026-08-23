@@ -1,8 +1,8 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import WorkspaceHeader from '../../../islands/WorkspaceHeader';
 import { useFullscreenBody } from '../../../lib/use-fullscreen-body';
+import { clientOnly } from '../../../lib/client-only';
 
 /*
  * The header server-renders (it is a plain client component, imported directly),
@@ -10,7 +10,7 @@ import { useFullscreenBody } from '../../../lib/use-fullscreen-body';
  * client-only: Monaco and the compiler worker touch browser APIs at module load,
  * so they cannot render on the server.
  */
-const Workspace = dynamic(() => import('../../../islands/Workspace'), { ssr: false });
+const Workspace = clientOnly(() => import('../../../islands/Workspace'));
 
 export function EditorClient({ projectId }: { projectId: string }) {
   useFullscreenBody();

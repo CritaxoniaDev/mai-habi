@@ -6,12 +6,16 @@
  * HABI exceeds 400.
  */
 
-@import '@fontsource-variable/geist';
+@import '@fontsource-variable/roboto-flex';
+@import '@fontsource-variable/bricolage-grotesque';
 @import '@fontsource-variable/geist-mono';
 
 :root {
-  --sl-font: 'Geist Variable', Geist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+  --sl-font: 'Roboto Flex Variable', 'Roboto Flex', Roboto, ui-sans-serif, system-ui,
     sans-serif;
+  /* Starlight has no heading-font slot, so headings are set explicitly below. */
+  --sl-font-heading: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', ui-sans-serif,
+    system-ui, sans-serif;
   --sl-font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo,
     monospace;
 
@@ -103,6 +107,28 @@ body {
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings carry the display face; body copy stays on the body face. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--sl-font-heading);
+  letter-spacing: -0.05em;
+}
+
+/*
+ * Starlight sets its own heading tracking (-0.025em on h1, -0.015em on h2-h4)
+ * from rules that load after this file and outrank a bare element selector, so
+ * the tighter value is forced the same way the weight cap below is.
+ */
+.sl-markdown-content h1,
+.content-panel h1,
+.sl-markdown-content :is(h2, h3, h4, h5, h6) {
+  letter-spacing: -0.05em !important;
 }
 
 /*

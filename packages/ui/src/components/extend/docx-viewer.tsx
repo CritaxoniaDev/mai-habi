@@ -373,8 +373,7 @@ function DocxFileActionsMenu({
             <DropdownMenuCheckboxItem
               checked={isDark}
               disabled={controlsDisabled}
-              variant="switch"
-              onCheckedChange={(checked) => onIsDarkChange(checked === true)}
+                onCheckedChange={(checked) => onIsDarkChange(checked === true)}
             >
               <span className="flex min-w-0 items-center gap-2">
                 <HugeiconsIcon icon={Moon02Icon} className="size-4" />
@@ -387,7 +386,6 @@ function DocxFileActionsMenu({
         <DropdownMenuCheckboxItem
           checked={showComments}
           disabled={controlsDisabled}
-          variant="switch"
           onCheckedChange={(checked) => onShowCommentsChange(checked === true)}
         >
           <span className="flex min-w-0 items-center gap-2">
@@ -398,7 +396,6 @@ function DocxFileActionsMenu({
         <DropdownMenuCheckboxItem
           checked={showTrackedChanges}
           disabled={controlsDisabled}
-          variant="switch"
           onCheckedChange={(checked) =>
             onShowTrackedChangesChange(checked === true)
           }
@@ -612,7 +609,6 @@ function DocxToolbar({
               value={zoomScale.toString()}
               onValueChange={(value) => setZoomScale(Number(value))}
               disabled={controlsDisabled}
-              modal={false}
             >
               <SelectTrigger
                 size="sm"
@@ -621,7 +617,7 @@ function DocxToolbar({
               >
                 <SelectValue>{Math.round(zoomScale)}%</SelectValue>
               </SelectTrigger>
-              <SelectContent align="end" alignItemWithTrigger={false}>
+              <SelectContent align="end">
                 {ZOOM_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value.toString()}>
                     {value}%

@@ -17,6 +17,7 @@ real tree you can navigate with arrow keys.
 | `Ctrl/Cmd + P` | Quick open a file |
 | `Ctrl/Cmd + Shift + P` | Command palette |
 | `Ctrl/Cmd + B` | Toggle the file tree |
+| `Ctrl/Cmd + Shift + F` | Search every file in the project |
 | ``Ctrl/Cmd + ` `` | Toggle the bottom panel |
 
 ## In the editor

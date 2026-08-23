@@ -1117,14 +1117,13 @@ function PDFViewerToolbar({
               value={String(currentZoomLevel)}
               onValueChange={(value) => onZoomChange(Number(value))}
               disabled={controlsDisabled}
-              modal={false}
             >
               <SelectTrigger size="sm" className="w-[84px] min-w-[84px]">
                 <SelectValue placeholder="Zoom">
                   {Math.round(currentZoomLevel * 100)}%
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false}>
+              <SelectContent>
                 {ZOOM_OPTIONS.map((option) => (
                   <SelectItem key={option} value={String(option)}>
                     {Math.round(option * 100)}%

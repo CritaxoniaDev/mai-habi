@@ -54,6 +54,8 @@ index — but treat a link as public once you have sent it.
 
 ## What we never ask for
 
-HABI needs no repository access, no package registry token and no shell. If a
-page ever asks for credentials that are not an email sign-in link or an OAuth
-provider you recognise, it is not HABI.
+HABI needs no package registry token and no shell. It asks for repository
+access only when you sign in with GitHub, and only to read: see
+[GitHub repositories](/guides/github/) for what that grant covers and how to
+revoke it. If a page ever asks for credentials that are not GitHub's own OAuth
+screen, it is not HABI.

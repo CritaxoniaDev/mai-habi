@@ -53,8 +53,17 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   '.otf': 'font/otf',
   '.mp4': 'video/mp4',
   '.webm': 'video/webm',
+  '.mov': 'video/quicktime',
+  '.m4v': 'video/mp4',
+  '.ogv': 'video/ogg',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.flac': 'audio/flac',
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   '.txt': 'text/plain',
   '.md': 'text/markdown',
   '.wasm': 'application/wasm',
@@ -77,10 +86,16 @@ const BINARY_EXTENSIONS = new Set([
   '.mp4',
   '.webm',
   '.mov',
+  '.m4v',
+  '.ogv',
   '.mp3',
   '.wav',
   '.ogg',
+  '.m4a',
+  '.aac',
+  '.flac',
   '.pdf',
+  '.docx',
   '.zip',
   '.gz',
   '.wasm',
@@ -131,4 +146,34 @@ export function isBinaryPath(path: string): boolean {
 
 export function isImagePath(path: string): boolean {
   return mimeForPath(path).startsWith('image/');
+}
+
+export function isVideoPath(path: string): boolean {
+  return mimeForPath(path).startsWith('video/');
+}
+
+export function isAudioPath(path: string): boolean {
+  return mimeForPath(path).startsWith('audio/');
+}
+
+export function isPdfPath(path: string): boolean {
+  return mimeForPath(path) === 'application/pdf';
+}
+
+/**
+ * Word documents only. The legacy `.doc` binary format is a different thing
+ * entirely and is not claimed here.
+ */
+export function isDocxPath(path: string): boolean {
+  return (
+    mimeForPath(path) ===
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  );
+}
+
+/** Anything the editor previews rather than opening as text. */
+export function isPreviewablePath(path: string): boolean {
+  return (
+    isImagePath(path) || isVideoPath(path) || isAudioPath(path) || isPdfPath(path) || isDocxPath(path)
+  );
 }

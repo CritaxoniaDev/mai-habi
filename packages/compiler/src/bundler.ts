@@ -212,11 +212,20 @@ function isJavaScriptType(type: string | null): boolean {
   return /^(?:module|text\/javascript|application\/javascript)$/i.test(type.trim());
 }
 
+/**
+ * Injected scripts have to carry the preview's CSP nonce or the browser refuses
+ * them — a nonce authorises a script element whatever its `src`, which is what
+ * lets a project load from a CDN the policy does not list. The bridge publishes
+ * it; see `previewBridge` in preview.ts.
+ */
+const STAMP_NONCE = "if (window.__previewNonce) script.nonce = window.__previewNonce;";
+
 function externalScript(source: string, module: boolean): string {
   return `await new Promise((resolve, reject) => {
   const script = document.createElement('script');
   script.src = ${JSON.stringify(source)};
   ${module ? "script.type = 'module';" : ''}
+  ${STAMP_NONCE}
   script.addEventListener('load', resolve, { once: true });
   script.addEventListener('error', () => reject(new Error('Failed to load ' + script.src)), { once: true });
   document.body.append(script);
@@ -228,6 +237,7 @@ function inlineScript(source: string, module: boolean): string {
     return `{
   const script = document.createElement('script');
   script.textContent = ${JSON.stringify(source)};
+  ${STAMP_NONCE}
   document.body.append(script);
 }`;
   }
@@ -236,6 +246,7 @@ function inlineScript(source: string, module: boolean): string {
   const script = document.createElement('script');
   script.type = 'module';
   script.textContent = ${JSON.stringify(source)};
+  ${STAMP_NONCE}
   script.addEventListener('load', resolve, { once: true });
   script.addEventListener('error', () => reject(new Error('Inline module failed')), { once: true });
   document.body.append(script);
@@ -255,6 +266,11 @@ export function htmlEntryModule(
   html: string,
   /** Whether a local reference exists in the project; missing ones are left alone. */
   resolves: (specifier: string) => boolean = () => true,
+  /**
+   * The source of a local script, for the ones that must run as classic scripts
+   * rather than modules. Returning null falls back to importing them.
+   */
+  read: (specifier: string) => string | null = () => null,
 ): string {
   const scripts: HtmlScript[] = [];
   const stylesheets: string[] = [];
@@ -313,13 +329,29 @@ export function htmlEntryModule(
       '\nsource = source.replace(/__mai_habi_asset_(\\d+)__/g, (_, index) => assets[Number(index)]);'
     : '';
 
+  /*
+   * A local `<script src>` without `type="module"` is a *classic* script, and
+   * classic scripts share one global scope: a `const` declared by the first is
+   * visible to the second. Importing them instead — which is what every local
+   * script used to get — gives each its own module scope, so any project split
+   * across a couple of plain script tags died on a ReferenceError for something
+   * its sibling had declared.
+   *
+   * So classic scripts are inlined verbatim and executed as classic scripts,
+   * which is also what preserves their ordering and top-level `this`. Modules
+   * keep being imported, which is what they asked for.
+   */
   const executions = scripts
     .map((script) => {
       if (script.source) {
         const specifier = localSpecifier(script.source);
-        return specifier
+        if (!specifier) return externalScript(script.source, script.module);
+        if (script.module) return `await import(${JSON.stringify(specifier)});`;
+
+        const source = read(specifier);
+        return source === null
           ? `await import(${JSON.stringify(specifier)});`
-          : externalScript(script.source, script.module);
+          : inlineScript(source, false);
       }
       return inlineScript(script.inline, script.module);
     })
@@ -448,8 +480,14 @@ export function virtualFilesystem(files: Record<string, string>, entry: string):
 
         return {
           contents: htmlEntry
-            ? htmlEntryModule(contents, (specifier) =>
-                Boolean(resolveInProject(files, resolveFrom(args.path, specifier))),
+            ? htmlEntryModule(
+                contents,
+                (specifier) =>
+                  Boolean(resolveInProject(files, resolveFrom(args.path, specifier))),
+                (specifier) => {
+                  const resolved = resolveInProject(files, resolveFrom(args.path, specifier));
+                  return resolved === null ? null : (files[toKey(resolved)] ?? null);
+                },
               )
             : contents,
           loader: htmlEntry ? 'js' : (LOADERS[extension] ?? 'text'),

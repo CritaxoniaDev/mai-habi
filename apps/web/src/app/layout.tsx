@@ -3,7 +3,8 @@ import { headers } from 'next/headers';
 import { THEME_INIT_SCRIPT } from '@mai-habi/ui/theme-init';
 
 // The variable fonts are bundled with the app rather than fetched from a CDN.
-import '@fontsource-variable/geist';
+import '@fontsource-variable/roboto-flex';
+import '@fontsource-variable/bricolage-grotesque';
 import '@fontsource-variable/geist-mono';
 
 import '../styles/global.css';

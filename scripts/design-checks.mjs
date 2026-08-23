@@ -117,6 +117,7 @@ const GRAPHIC_PAIRS = [
   // File-type accents in the explorer, on both surfaces they can sit on.
   ...[
     '--lang-react',
+    '--lang-tailwind',
     '--lang-typescript',
     '--lang-javascript',
     '--lang-css',
@@ -125,6 +126,18 @@ const GRAPHIC_PAIRS = [
     '--lang-markdown',
     '--lang-image',
     '--lang-config',
+    '--lang-astro',
+    '--lang-sql',
+    '--lang-python',
+    '--lang-go',
+    '--lang-rust',
+    '--lang-java',
+    '--lang-php',
+    '--lang-ruby',
+    '--lang-shell',
+    '--lang-vue',
+    '--lang-svelte',
+    '--lang-docker',
   ].flatMap((token) => [
     [token, '--surface'],
     [token, '--surface-active'],
@@ -409,8 +422,10 @@ export function registerDesignChecks(check) {
   });
 
   check('Monaco registers tokenizers for every themed source language', () => {
+    // The contributions live in the shared runtime, which both the workspace
+    // editor and the read-only viewers import.
     const source = fs.readFileSync(
-      path.join(ROOT, 'apps/web/src/components/workspace/CodeEditor.tsx'),
+      path.join(ROOT, 'apps/web/src/lib/monaco-runtime.ts'),
       'utf8',
     );
 

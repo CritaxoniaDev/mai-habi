@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Boxes, Cpu, Share2, SquareTerminal, Webhook } from 'lucide-react';
+import { Boxes, Cpu, Github, Share2, SquareTerminal, Webhook } from 'lucide-react';
 import AuthMenu from '../islands/AuthMenu';
 import DashboardActions from '../islands/DashboardActions';
 import ProjectList from '../islands/ProjectList';
@@ -57,6 +57,13 @@ export default function ProjectsPage() {
           </a>
 
           <div className="flex items-center gap-1">
+            <a
+              href="/github"
+              className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-label font-light text-muted-foreground outline-none transition-colors duration-[--duration-fast] hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring sm:inline-flex"
+            >
+              <Github className="size-3.5" aria-hidden="true" />
+              Repositories
+            </a>
             <a
               href="/rest"
               className="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-label font-light text-muted-foreground outline-none transition-colors duration-[--duration-fast] hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring sm:inline-flex"

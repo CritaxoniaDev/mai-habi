@@ -8,3 +8,4 @@ export * from './templates';
 export * from './local-store';
 export * from './projects';
 export * from './supabase';
+export * from './github-auth';

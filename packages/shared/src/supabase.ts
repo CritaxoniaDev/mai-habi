@@ -8,11 +8,29 @@ import type {
   Visibility,
 } from '@mai-habi/types';
 import { SUPABASE_ANON_KEY, SUPABASE_ENABLED, SUPABASE_URL, viewerSharedUrl } from './config';
+import { storeGitHubToken } from './github-auth';
 import { shareId as newShareId } from './ids';
 import { defaultSettings, filesFromSnapshot } from './projects';
 
-let client: SupabaseClient | null = null;
-let loading: Promise<SupabaseClient | null> | null = null;
+interface ClientCache {
+  client: SupabaseClient | null;
+  loading: Promise<SupabaseClient | null> | null;
+}
+
+/*
+ * Parked on `globalThis` rather than in module variables. Fast Refresh
+ * re-evaluates this module whenever anything importing it is edited, which
+ * resets plain module state and strands the previous GoTrueClient — it keeps
+ * its storage listener alive and the next call builds a second client on the
+ * same storage key ("Multiple GoTrueClient instances detected"). The cache
+ * outlives re-evaluation, so one client is reused.
+ *
+ * Production is unaffected: the first call still creates exactly one client.
+ */
+const cache = ((globalThis as Record<string, unknown>).__maiHabiSupabase ??= {
+  client: null,
+  loading: null,
+} satisfies ClientCache) as ClientCache;
 
 /**
  * The Supabase SDK is only downloaded once something actually needs the cloud —
@@ -20,17 +38,17 @@ let loading: Promise<SupabaseClient | null> | null = null;
  */
 export async function getSupabase(): Promise<SupabaseClient | null> {
   if (!SUPABASE_ENABLED) return null;
-  if (client) return client;
-  if (loading) return loading;
+  if (cache.client) return cache.client;
+  if (cache.loading) return cache.loading;
 
-  loading = import('@supabase/supabase-js').then(({ createClient }) => {
-    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  cache.loading = import('@supabase/supabase-js').then(({ createClient }) => {
+    cache.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     });
-    return client;
+    return cache.client;
   });
 
-  return loading;
+  return cache.loading;
 }
 
 export function isCloudEnabled(): boolean {
@@ -58,22 +76,14 @@ export async function onAuthChange(handler: (user: User | null) => void): Promis
   const supabase = await getSupabase();
   if (!supabase) return () => {};
 
-  const { data } = supabase.auth.onAuthStateChange(() => {
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    // The only moment `provider_token` is ever visible. Missing on refresh
+    // events, so absence must not clear a token captured earlier.
+    if (session?.provider_token) storeGitHubToken(session.provider_token);
     void getCurrentUser().then(handler);
   });
 
   return () => data.subscription.unsubscribe();
-}
-
-export async function signInWithEmail(email: string, redirectTo: string): Promise<void> {
-  const supabase = await getSupabase();
-  if (!supabase) throw new Error('Cloud features are not configured.');
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo },
-  });
-  if (error) throw error;
 }
 
 export async function signInWithGitHub(redirectTo: string): Promise<void> {
@@ -82,7 +92,15 @@ export async function signInWithGitHub(redirectTo: string): Promise<void> {
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
-    options: { redirectTo },
+    options: {
+      redirectTo,
+      /*
+       * `repo` is what lets the app list and read private repositories.
+       * GitHub publishes no read-only equivalent, so this also grants write
+       * access; see the security note in `github-auth.ts`.
+       */
+      scopes: 'repo read:user user:email',
+    },
   });
   if (error) throw error;
 }
@@ -90,6 +108,8 @@ export async function signInWithGitHub(redirectTo: string): Promise<void> {
 export async function signOut(): Promise<void> {
   const supabase = await getSupabase();
   await supabase?.auth.signOut();
+  // Outliving the session would leave a usable GitHub token behind.
+  storeGitHubToken(null);
 }
 
 /* -------------------------------------------------------------- project sync */
@@ -136,6 +156,26 @@ export async function syncProjectToCloud(project: Project, files: FileMap): Prom
     const { error: insertError } = await supabase.from('project_files').insert(rows);
     if (insertError) throw insertError;
   }
+}
+
+/**
+ * Removes a project from the account.
+ *
+ * `project_files` and any shares carry `on delete cascade` on their foreign key
+ * to `projects`, so this one statement takes the whole tree with it.
+ *
+ * A no-op when signed out: guest projects are never inserted here, and the row
+ * is unreachable anyway under the `projects_delete_own` policy.
+ */
+export async function deleteCloudProject(id: string): Promise<void> {
+  const supabase = await getSupabase();
+  if (!supabase) return;
+
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return;
+
+  const { error } = await supabase.from('projects').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function listCloudProjects(): Promise<Project[]> {

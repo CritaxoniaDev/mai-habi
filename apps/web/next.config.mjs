@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 /** @type {import('next').NextConfig} */
 
 /*
@@ -35,9 +37,24 @@ const runtimeHeaders = [
   },
 ];
 
+/*
+ * Immutable static assets are switched on by an adapter, never by this file —
+ * `supportsImmutableAssets` here can only opt *out* of what an adapter offers.
+ * Ours does nothing but set that flag, so chunks land under
+ * `/_next/static/immutable/*` and are served without the `?dpl` parameter.
+ *
+ * Skipped on Vercel, which brings its own adapter: pointing `adapterPath` at
+ * this one would replace theirs and take the whole platform integration —
+ * routing, ISR, image optimisation — with it.
+ */
+const adapterPath = process.env.VERCEL
+  ? undefined
+  : fileURLToPath(new URL('./immutable-adapter.mjs', import.meta.url));
+
 const nextConfig = {
   reactStrictMode: true,
   devIndicators: false,
+  ...(adapterPath ? { adapterPath } : {}),
 
   // The workspace packages ship raw TypeScript source (their `main` points at
   // `src/*.ts`), so Next has to compile them alongside the app.

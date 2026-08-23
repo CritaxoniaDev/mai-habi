@@ -22,12 +22,29 @@ const TARGET = path.join(ROOT, 'apps/web/src/lib/language-logos.ts');
 /** Key in the generated map -> file in simple-icons. */
 const WANTED = {
   react: 'react',
+  next: 'nextdotjs',
+  tailwind: 'tailwindcss',
   typescript: 'typescript',
   javascript: 'javascript',
   css: 'css',
   html: 'html5',
   json: 'json',
   markdown: 'markdown',
+
+  // Languages the repository browser meets on GitHub but the editor never
+  // compiles. They identify a repository; they are not file-type icons.
+  astro: 'astro',
+  sql: 'postgresql',
+  python: 'python',
+  go: 'go',
+  rust: 'rust',
+  java: 'openjdk',
+  php: 'php',
+  ruby: 'ruby',
+  shell: 'gnubash',
+  vue: 'vuedotjs',
+  svelte: 'svelte',
+  docker: 'docker',
 };
 
 if (!fs.existsSync(SOURCE)) {

@@ -1,6 +1,7 @@
 import type { FileMap, Project, TemplateId } from '@mai-habi/types';
 import {
   createProject,
+  deleteCloudProject,
   deleteLocalProject,
   getGuestIdentity,
   getLocalFiles,
@@ -12,7 +13,7 @@ import {
   saveLocalProjectWithFiles,
   syncProjectToCloud,
 } from '@mai-habi/shared';
-import { detectEntryFile, downloadProject } from '@mai-habi/filesystem';
+import { detectEntryFile, detectRootComponent, downloadProject } from '@mai-habi/filesystem';
 import { useSession } from '../state/session';
 import { markProjectFresh } from './onboarding';
 
@@ -46,16 +47,39 @@ export async function createAndOpen(name: string, templateId: TemplateId): Promi
   window.location.href = projectHref(project.id);
 }
 
+/**
+ * What an imported tree looks like, recorded once while the files are in hand.
+ *
+ * The dashboard shows a stack mark per project and cannot afford to read every
+ * project's files to work one out, so the answer is stored on the project. Next
+ * is identified by its route file: `detectEntryFile` deliberately returns null
+ * for a Next project (there is no index.html or src/main), so only the root
+ * component reveals it.
+ */
+function detectTemplate(files: FileMap, entry: string | null): TemplateId {
+  const root = detectRootComponent(files);
+
+  if (root && /(^|\/)(app|pages)\//.test(root)) return 'next';
+  if (entry?.endsWith('.html')) return 'html-css-js';
+  if (root?.endsWith('.tsx') || entry?.endsWith('.tsx')) return 'react-ts';
+  if (root?.endsWith('.jsx') || entry?.endsWith('.jsx')) return 'react-js';
+
+  return 'import';
+}
+
 export async function importAndOpen(name: string, files: FileMap): Promise<void> {
   const guest = await getGuestIdentity();
   const { project } = createProject({ name, templateId: 'import', guestId: guest.id });
   const tabs = pickInitialTabs(files);
+  const entry = detectEntryFile(files);
 
   const imported: Project = {
     ...project,
+    // Metadata only: the imported files are saved as-is either way.
+    templateId: detectTemplate(files, entry),
     settings: {
       ...project.settings,
-      entryFile: detectEntryFile(files) ?? project.settings.entryFile,
+      entryFile: entry ?? project.settings.entryFile,
     },
     openTabs: tabs,
     activeTab: tabs[0] ?? null,
@@ -92,7 +116,19 @@ export async function exportProject(project: Project): Promise<void> {
   await downloadProject(files, project.name);
 }
 
+/**
+ * The account copy goes first, and a failure there aborts the whole delete.
+ *
+ * `loadProjects` re-adds any account project this browser does not have, so
+ * dropping the local row while the cloud row survived would resurrect the
+ * project on the next load — with whatever offline edits it held now gone. The
+ * local copy is the safer thing to still be holding if this goes wrong.
+ */
 export async function removeProject(id: string): Promise<void> {
+  if (isCloudEnabled() && useSession.getState().user) {
+    await deleteCloudProject(id);
+  }
+
   await deleteLocalProject(id);
 }
 

@@ -34,8 +34,11 @@ import {
 } from '@mai-habi/filesystem';
 import { compileProject } from '../lib/compile';
 import { useSession } from './session';
+import { searchProject, type SearchMatch } from '../lib/project-search';
 
 export type BottomTab = 'console' | 'problems' | 'preview';
+
+export type SidebarView = 'files' | 'search';
 
 export interface PreviewBundle {
   js: string;
@@ -43,6 +46,54 @@ export interface PreviewBundle {
   /** Bumped on every successful compile so the iframe remounts. */
   generation: number;
 }
+
+
+export interface SearchState {
+  query: string;
+  caseSensitive: boolean;
+  regex: boolean;
+  matches: SearchMatch[];
+  /** Paths with at least one match, so the panel can group without re-scanning. */
+  files: string[];
+  truncated: boolean;
+  error: string | null;
+  /** Paths whose matches are folded away. Kept here so a view switch does not reopen them. */
+  collapsed: string[];
+}
+
+/**
+ * A pending "new file/folder" from outside the explorer.
+ *
+ * The explorer owns which row is selected and which folders are open, so it is
+ * the only place that can decide where a new node belongs. The header button
+ * and the command palette therefore ask rather than tell, and the explorer
+ * answers by opening an inline row in the right parent.
+ *
+ * `token` is bumped per request so asking twice in a row still lands, the same
+ * way `RevealTarget` does.
+ */
+export interface NewNodeRequest {
+  type: 'file' | 'directory';
+  token: number;
+}
+
+export interface RevealTarget {
+  path: string;
+  line: number;
+  column: number;
+  token: number;
+}
+
+const EMPTY_SEARCH: SearchState = {
+  query: '',
+  caseSensitive: false,
+  regex: false,
+  matches: [],
+  files: [],
+  truncated: false,
+  error: null,
+  collapsed: [],
+};
 
 interface WorkspaceState {
   phase: 'loading' | 'ready' | 'missing';
@@ -55,6 +106,7 @@ interface WorkspaceState {
   activeTab: string | null;
 
   explorerCollapsed: boolean;
+  sidebarView: SidebarView;
   panelCollapsed: boolean;
   bottomTab: BottomTab;
 
@@ -66,6 +118,23 @@ interface WorkspaceState {
 
   console: ConsoleEntry[];
   problems: Problem[];
+
+  /*
+   * Search lives in the store rather than the panel because the panel unmounts
+   * when another tab is selected, and losing a result set on a glance at the
+   * console would be maddening.
+   */
+  search: SearchState;
+
+  /**
+   * Where the editor should scroll to next.
+   *
+   * `token` is bumped on every request so clicking the same match twice still
+   * moves the cursor — the path and line alone would compare equal and the
+   * effect would not re-run.
+   */
+  revealTarget: RevealTarget | null;
+  newNodeRequest: NewNodeRequest | null;
 
   load: (projectId: string) => Promise<void>;
   setContent: (path: string, content: string) => void;
@@ -88,6 +157,9 @@ interface WorkspaceState {
   updateSettings: (patch: Partial<ProjectSettings>) => void;
 
   toggleExplorer: () => void;
+  setSidebarView: (view: SidebarView) => void;
+  /** Reveals the sidebar on its search view, expanding it if collapsed. */
+  openSearch: () => void;
   togglePanel: (tab?: BottomTab) => void;
   setBottomTab: (tab: BottomTab) => void;
 
@@ -98,6 +170,16 @@ interface WorkspaceState {
   appendConsole: (entry: Omit<ConsoleEntry, 'id'>) => void;
   clearConsole: () => void;
   setProblems: (problems: Problem[]) => void;
+
+  setSearch: (patch: Partial<Pick<SearchState, 'query' | 'caseSensitive' | 'regex'>>) => void;
+  runSearch: () => void;
+  toggleSearchFile: (path: string) => void;
+  setSearchCollapsed: (collapsed: boolean) => void;
+  clearSearch: () => void;
+  reveal: (path: string, line: number, column: number) => void;
+  requestNewNode: (type: 'file' | 'directory') => void;
+  consumeNewNodeRequest: () => void;
+  consumeReveal: () => void;
 }
 
 /* --------------------------------------------------------------- persistence */
@@ -176,6 +258,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   activeTab: null,
 
   explorerCollapsed: false,
+  sidebarView: 'files',
   panelCollapsed: false,
   bottomTab: 'console',
 
@@ -187,6 +270,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   console: [],
   problems: [],
+  search: EMPTY_SEARCH,
+  revealTarget: null,
+  newNodeRequest: null,
 
   async load(projectId) {
     let project = await getLocalProject(projectId);
@@ -359,6 +445,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     if ('tailwind' in patch || 'entryFile' in patch) compileSoon();
   },
 
+  setSidebarView(view) {
+    set({ sidebarView: view, explorerCollapsed: false });
+  },
+
+  openSearch() {
+    set({ sidebarView: 'search', explorerCollapsed: false });
+  },
+
   toggleExplorer() {
     set((state) => ({ explorerCollapsed: !state.explorerCollapsed }));
   },
@@ -437,6 +531,73 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   setProblems(problems) {
     set({ problems });
+  },
+
+  setSearch(patch) {
+    set((state) => ({ search: { ...state.search, ...patch } }));
+    get().runSearch();
+  },
+
+  /*
+   * Synchronous on purpose. The scan is a linear pass over files already in
+   * memory, bounded by the 500-file and 12MB import caps, so it finishes well
+   * inside a frame; the panel debounces typing rather than this deferring.
+   */
+  runSearch() {
+    const { files, search } = get();
+    const outcome = searchProject(files, {
+      query: search.query,
+      caseSensitive: search.caseSensitive,
+      regex: search.regex,
+    });
+
+    set((state) => ({ search: { ...state.search, ...outcome, collapsed: [] } }));
+  },
+
+  toggleSearchFile(path) {
+    set((state) => {
+      const collapsed = state.search.collapsed.includes(path)
+        ? state.search.collapsed.filter((entry) => entry !== path)
+        : [...state.search.collapsed, path];
+
+      return { search: { ...state.search, collapsed } };
+    });
+  },
+
+  setSearchCollapsed(collapsed) {
+    set((state) => ({
+      search: { ...state.search, collapsed: collapsed ? [...state.search.files] : [] },
+    }));
+  },
+
+  clearSearch() {
+    set((state) => ({
+      search: { ...EMPTY_SEARCH, caseSensitive: state.search.caseSensitive, regex: state.search.regex },
+    }));
+  },
+
+  reveal(path, line, column) {
+    get().openFile(path);
+    set((state) => ({
+      revealTarget: { path, line, column, token: (state.revealTarget?.token ?? 0) + 1 },
+    }));
+  },
+
+  consumeReveal() {
+    set({ revealTarget: null });
+  },
+
+  requestNewNode(type) {
+    set((state) => ({
+      // Nothing to type into if the tree is hidden behind the search view.
+      sidebarView: 'files',
+      explorerCollapsed: false,
+      newNodeRequest: { type, token: (state.newNodeRequest?.token ?? 0) + 1 },
+    }));
+  },
+
+  consumeNewNodeRequest() {
+    set({ newNodeRequest: null });
   },
 }));
 

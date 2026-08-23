@@ -17,6 +17,29 @@ not a real disk, and nothing is written to your machine.
 | `.json` | Parsed and importable |
 | `.html` | Document, or the project entry |
 
+## Previewing what you cannot edit
+
+Not every file is text. Selecting one of these opens a viewer instead of the
+editor:
+
+| Kind | Shown as |
+| --- | --- |
+| Images | The picture, fit to the pane |
+| Video and audio | A player with the browser's own controls |
+| PDF | The browser's PDF viewer — pages, zoom, search, print |
+| Word (`.docx`) | The document, following the editor's light or dark setting |
+
+These are previews, not editors: the file is shown, never rewritten.
+
+## Adding a file or folder
+
+The **＋** buttons above the tree, the right-click menu and the command palette
+all do the same thing — open a row in the tree where you type the name. There is
+no dialog.
+
+Where the row appears follows what is selected: inside a selected folder,
+beside a selected file, otherwise at the root.
+
 ## Relative imports
 
 Imports resolve against the project the way a bundler resolves against a disk.

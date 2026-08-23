@@ -8,17 +8,6 @@ export const metadata: Metadata = {
 export default function AuthCallbackPage() {
   return (
     <main className="grid h-screen place-items-center px-6 text-center">
-      <div>
-        <p className="text-section font-light">Signing you in</p>
-        <p className="mt-1.5 text-secondary font-light text-muted-foreground">
-          This only takes a moment.
-        </p>
-        <noscript>
-          <p className="mt-4 text-secondary font-light text-danger">
-            JavaScript is required to complete sign-in.
-          </p>
-        </noscript>
-      </div>
       <CallbackClient />
     </main>
   );

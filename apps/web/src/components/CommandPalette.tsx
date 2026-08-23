@@ -33,7 +33,6 @@ import {
 import { useUi } from '../state/ui';
 import { useWorkspace } from '../state/workspace';
 import { openViewer, recompile } from '../lib/run';
-import { promptNewFile, promptNewFolder } from '../lib/create-node';
 import { startProductTour } from '../lib/tour';
 
 const THEME_ICONS = { light: Sun, dark: Moon, system: Monitor } as const;
@@ -103,10 +102,14 @@ export function CommandPalette() {
             </CommandGroup>
 
             <CommandGroup heading="Files">
-              <CommandItem onSelect={runAnd(promptNewFile)}>
+              <CommandItem
+                onSelect={runAnd(() => useWorkspace.getState().requestNewNode('file'))}
+              >
                 <FilePlus /> New file
               </CommandItem>
-              <CommandItem onSelect={runAnd(promptNewFolder)}>
+              <CommandItem
+                onSelect={runAnd(() => useWorkspace.getState().requestNewNode('directory'))}
+              >
                 <FolderPlus /> New folder
               </CommandItem>
               <CommandItem onSelect={() => setPalette('files')}>

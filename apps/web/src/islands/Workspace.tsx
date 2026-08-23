@@ -7,13 +7,13 @@ import {
 } from 'react-resizable-panels';
 import { Button, Skeleton, Toaster, TooltipProvider, cn } from '@mai-habi/ui';
 import { FilePlus, FolderPlus, PanelLeftClose, TerminalSquare, X } from 'lucide-react';
-import { useWorkspace } from '../state/workspace';
+import { useWorkspace, type SidebarView } from '../state/workspace';
 import { useShortcuts } from '../lib/shortcuts';
-import { promptNewFile, promptNewFolder } from '../lib/create-node';
 import { disposeCompiler } from '../lib/compile';
 import { CodeEditor } from '../components/workspace/CodeEditor';
 import { EditorTabs } from '../components/workspace/EditorTabs';
 import { FileExplorer } from '../components/workspace/FileExplorer';
+import { SearchPanel } from '../components/workspace/SearchPanel';
 import { BottomPanel } from '../components/workspace/BottomPanel';
 import { CommandPalette } from '../components/CommandPalette';
 import { ShareDialog } from '../components/dialogs/ShareDialog';
@@ -23,6 +23,11 @@ import { PromptDialog } from '../components/dialogs/PromptDialog';
 import { OnboardingWelcome } from '../components/OnboardingWelcome';
 
 type Layout = 'mobile' | 'tablet' | 'desktop';
+
+const SIDEBAR_VIEWS: Array<{ id: SidebarView; label: string }> = [
+  { id: 'files', label: 'Files' },
+  { id: 'search', label: 'Search' },
+];
 
 /**
  * The interactive region of the editor.
@@ -35,6 +40,8 @@ type Layout = 'mobile' | 'tablet' | 'desktop';
 export default function Workspace({ projectId }: { projectId: string }) {
   const phase = useWorkspace((state) => state.phase);
   const explorerCollapsed = useWorkspace((state) => state.explorerCollapsed);
+  const sidebarView = useWorkspace((state) => state.sidebarView);
+  const newNodeRequest = useWorkspace((state) => state.newNodeRequest);
   const panelCollapsed = useWorkspace((state) => state.panelCollapsed);
 
   const explorerRef = useRef<ImperativePanelHandle>(null);
@@ -57,6 +64,16 @@ export default function Workspace({ projectId }: { projectId: string }) {
       disposeCompiler();
     };
   }, []);
+
+  /*
+   * On mobile the sidebar is a view rather than a panel, so clearing
+   * `explorerCollapsed` is not enough — the tree has to be the visible pane or
+   * the new row appears somewhere nobody can see.
+   */
+  useEffect(() => {
+    if (!newNodeRequest || layout !== 'mobile') return;
+    setMobileView('files');
+  }, [newNodeRequest, layout]);
 
   useEffect(() => {
     if (layout !== 'desktop') return;
@@ -97,29 +114,55 @@ export default function Workspace({ projectId }: { projectId: string }) {
       data-tour="files"
       className="flex h-full flex-col overflow-hidden border-r border-border bg-surface"
     >
-      <div className="flex h-8 shrink-0 items-center gap-1 px-2">
-        <span className="text-micro font-normal uppercase tracking-[0.08em] text-muted-foreground">
-          Files
-        </span>
+      <div
+        className="flex h-8 shrink-0 items-center gap-0.5 px-2"
+        role="tablist"
+        aria-label="Sidebar"
+      >
+        {SIDEBAR_VIEWS.map((view) => (
+          <button
+            key={view.id}
+            type="button"
+            role="tab"
+            aria-selected={sidebarView === view.id}
+            onClick={() => useWorkspace.getState().setSidebarView(view.id)}
+            className={cn(
+              'rounded-sm px-1.5 py-0.5 text-micro font-normal uppercase tracking-[0.08em] outline-none',
+              'transition-colors duration-[--duration-fast] ease-[--ease-standard]',
+              'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus-ring',
+              sidebarView === view.id
+                ? 'text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {view.label}
+          </button>
+        ))}
+
         <div className="ml-auto flex items-center">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="touch-target"
-            aria-label="New file"
-            onClick={promptNewFile}
-          >
-            <FilePlus />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="touch-target"
-            aria-label="New folder"
-            onClick={promptNewFolder}
-          >
-            <FolderPlus />
-          </Button>
+          {/* Creation belongs to the file tree, not to a list of search hits. */}
+          {sidebarView === 'files' && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="touch-target"
+                aria-label="New file"
+                onClick={() => useWorkspace.getState().requestNewNode('file')}
+              >
+                <FilePlus />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="touch-target"
+                aria-label="New folder"
+                onClick={() => useWorkspace.getState().requestNewNode('directory')}
+              >
+                <FolderPlus />
+              </Button>
+            </>
+          )}
           {layout !== 'mobile' && (
             <Button
               variant="ghost"
@@ -134,8 +177,14 @@ export default function Workspace({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <FileExplorer />
+      {/* The explorer scrolls as one list; search manages its own regions. */}
+      <div
+        className={cn(
+          'min-h-0 flex-1',
+          sidebarView === 'files' ? 'overflow-y-auto' : 'overflow-hidden',
+        )}
+      >
+        {sidebarView === 'files' ? <FileExplorer /> : <SearchPanel />}
       </div>
     </div>
   );

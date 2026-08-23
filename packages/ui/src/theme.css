@@ -57,6 +57,7 @@
    * filename is the identifier, so these only ever tint an icon.
    */
   --lang-react: #0891b2;
+  --lang-tailwind: #0e7490;
   --lang-typescript: #3178c6;
   --lang-javascript: #a16207;
   --lang-css: #663399;
@@ -65,6 +66,18 @@
   --lang-markdown: #525252;
   --lang-image: #047857;
   --lang-config: #6a6a6a;
+  --lang-astro: #6d28d9;
+  --lang-sql: #0369a1;
+  --lang-python: #2b6cb0;
+  --lang-go: #0e7490;
+  --lang-rust: #9a3412;
+  --lang-java: #b45309;
+  --lang-php: #4f46e5;
+  --lang-ruby: #b91c1c;
+  --lang-shell: #3f6212;
+  --lang-vue: #15803d;
+  --lang-svelte: #c2410c;
+  --lang-docker: #1d4ed8;
 
   --focus-ring: #171717;
   --selection: #dedede;
@@ -109,6 +122,7 @@
   --danger-border: #55201d;
 
   --lang-react: #61dafb;
+  --lang-tailwind: #22d3ee;
   --lang-typescript: #6ba6e8;
   --lang-javascript: #f7df1e;
   --lang-css: #a78bfa;
@@ -117,6 +131,18 @@
   --lang-markdown: #d4d4d4;
   --lang-image: #86efac;
   --lang-config: #a3a3a3;
+  --lang-astro: #c4b5fd;
+  --lang-sql: #7dd3fc;
+  --lang-python: #93c5fd;
+  --lang-go: #67e8f9;
+  --lang-rust: #fdba74;
+  --lang-java: #fbbf24;
+  --lang-php: #a5b4fc;
+  --lang-ruby: #fca5a5;
+  --lang-shell: #bef264;
+  --lang-vue: #6ee7b7;
+  --lang-svelte: #fdba74;
+  --lang-docker: #93c5fd;
 
   --focus-ring: #f5f5f5;
   --selection: #333333;
@@ -167,6 +193,7 @@
   --color-backdrop: var(--backdrop);
 
   --color-lang-react: var(--lang-react);
+  --color-lang-tailwind: var(--lang-tailwind);
   --color-lang-typescript: var(--lang-typescript);
   --color-lang-javascript: var(--lang-javascript);
   --color-lang-css: var(--lang-css);
@@ -175,6 +202,18 @@
   --color-lang-markdown: var(--lang-markdown);
   --color-lang-image: var(--lang-image);
   --color-lang-config: var(--lang-config);
+  --color-lang-astro: var(--lang-astro);
+  --color-lang-sql: var(--lang-sql);
+  --color-lang-python: var(--lang-python);
+  --color-lang-go: var(--lang-go);
+  --color-lang-rust: var(--lang-rust);
+  --color-lang-java: var(--lang-java);
+  --color-lang-php: var(--lang-php);
+  --color-lang-ruby: var(--lang-ruby);
+  --color-lang-shell: var(--lang-shell);
+  --color-lang-vue: var(--lang-vue);
+  --color-lang-svelte: var(--lang-svelte);
+  --color-lang-docker: var(--lang-docker);
 
   /*
    * shadcn/ui token aliases.
@@ -207,9 +246,14 @@
 }
 
 @theme {
-  --font-sans: 'Geist Variable', Geist, ui-sans-serif, system-ui, -apple-system,
-    'Segoe UI', sans-serif;
-  --font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SFMono-Regular',
+  /* Body copy. */
+  --font-sans: 'Roboto Flex Variable', 'Roboto Flex', Roboto, ui-sans-serif, system-ui,
+    sans-serif;
+
+  /* Headings only. Applied to h1-h6 in the base layer. */
+  --font-heading: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: "Consolas", ui-monospace, 'SFMono-Regular',
     'JetBrains Mono', Menlo, monospace;
 
   /* One type scale for the whole product. */
@@ -310,6 +354,32 @@
     font-weight: 300;
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
+  }
+
+  /*
+   * The display face is reserved for headings; everything else inherits the
+   * body face from `html`. Radix renders its dialog titles as `h2`, so those
+   * are covered too. Heading-sized text that is not a heading element can opt
+   * in with the `font-heading` utility.
+   */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+
+    /*
+     * The size utilities resolve tracking as `var(--tw-tracking, <the step's
+     * own tracking>)`, so setting `--tw-tracking` retightens `text-page`,
+     * `text-section` and the rest without touching the scale itself — which
+     * keeps heading-sized body text on its original tracking. `letter-spacing`
+     * covers headings carrying no size utility at all. An explicit `tracking-*`
+     * utility still wins: utilities outrank the base layer.
+     */
+    --tw-tracking: var(--tracking-tighter);
+    letter-spacing: var(--tracking-tighter);
   }
 
   /*

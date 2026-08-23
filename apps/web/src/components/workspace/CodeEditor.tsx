@@ -1,117 +1,24 @@
 import { useEffect, useRef } from 'react';
 
-/*
- * Monaco is imported feature by feature rather than through its `editor.main`
- * barrel: the barrel registers every bundled grammar (ABAP, Solidity, …) and
- * roughly triples the editor bundle for languages this product never opens.
- */
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import 'monaco-editor/esm/vs/editor/editor.all.js';
-import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
-import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution';
-import 'monaco-editor/esm/vs/basic-languages/css/css.contribution';
-import 'monaco-editor/esm/vs/basic-languages/html/html.contribution';
-import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
-import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
-import 'monaco-editor/esm/vs/language/css/monaco.contribution';
-import 'monaco-editor/esm/vs/language/html/monaco.contribution';
-import 'monaco-editor/esm/vs/language/json/monaco.contribution';
-
-import { emmetHTML, emmetCSS, emmetJSX } from 'emmet-monaco-es';
-
 import type { Problem } from '@mai-habi/types';
-import { isImagePath, languageForPath, mimeForPath } from '@mai-habi/filesystem';
-import { useTheme } from '@mai-habi/ui';
+import {
+  isDocxPath,
+  isImagePath,
+  isPdfPath,
+  languageForPath,
+  mimeForPath,
+} from '@mai-habi/filesystem';
+import { MediaViewer, isMediaPath } from './MediaViewer';
+import { PdfPreview } from './PdfPreview';
+import { DocxPreview } from './DocxPreview';
+import { cn, useTheme } from '@mai-habi/ui';
 import { useWorkspace } from '../../state/workspace';
-import { MONACO_THEMES, monacoThemeName } from '../../lib/editor-themes';
-import { loadReactTypes } from '../../lib/monaco-types';
-
-declare global {
-  interface Window {
-    MonacoEnvironment?: monaco.Environment;
-  }
-}
-
 /*
- * The bundler resolves each worker from a static `new URL(..., import.meta.url)`
- * — the Vite `?worker` import suffix is not available under Next's bundler, but
- * this form is understood by both webpack and Turbopack. Every path must be a
- * literal for that detection to fire, so the labels map to explicit `new Worker`
- * calls rather than a shared factory.
+ * Worker environment, themes, Emmet and the TypeScript defaults all live in
+ * the shared runtime, so the read-only viewers get exactly the same Monaco.
  */
-window.MonacoEnvironment = {
-  getWorker(_id, label) {
-    if (label === 'json') {
-      return new Worker(
-        new URL('monaco-editor/esm/vs/language/json/json.worker.js', import.meta.url),
-        { type: 'module' },
-      );
-    }
-    if (label === 'css' || label === 'scss' || label === 'less') {
-      return new Worker(
-        new URL('monaco-editor/esm/vs/language/css/css.worker.js', import.meta.url),
-        { type: 'module' },
-      );
-    }
-    if (label === 'html' || label === 'handlebars' || label === 'razor') {
-      return new Worker(
-        new URL('monaco-editor/esm/vs/language/html/html.worker.js', import.meta.url),
-        { type: 'module' },
-      );
-    }
-    if (label === 'typescript' || label === 'javascript') {
-      return new Worker(
-        new URL('monaco-editor/esm/vs/language/typescript/ts.worker.js', import.meta.url),
-        { type: 'module' },
-      );
-    }
-    return new Worker(
-      new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url),
-      { type: 'module' },
-    );
-  },
-};
-
-let configured = false;
-
-function configureMonaco(): void {
-  if (configured) return;
-  configured = true;
-
-  const compilerOptions: monaco.languages.typescript.CompilerOptions = {
-    target: monaco.languages.typescript.ScriptTarget.ESNext,
-    module: monaco.languages.typescript.ModuleKind.ESNext,
-    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-    jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
-    jsxImportSource: 'react',
-    allowJs: true,
-    allowNonTsExtensions: true,
-    esModuleInterop: true,
-    allowSyntheticDefaultImports: true,
-    isolatedModules: true,
-    strict: true,
-    skipLibCheck: true,
-  };
-
-  monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
-  monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
-  monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
-
-  for (const [name, data] of Object.values(MONACO_THEMES)) {
-    monaco.editor.defineTheme(name, data);
-  }
-
-  /*
-   * Emmet: `div` + Tab expands to <div></div>, `ul>li*3`, `.card`, and the rest
-   * of the Emmet vocabulary. The JSX variant covers .tsx/.jsx and emits
-   * `className` instead of `class`.
-   */
-  emmetHTML(monaco, ['html']);
-  emmetCSS(monaco, ['css', 'scss', 'less']);
-  emmetJSX(monaco, ['javascript', 'typescript']);
-
-  void loadReactTypes(monaco);
-}
+import { configureMonaco, monaco } from '../../lib/monaco-runtime';
+import { monacoThemeName } from '../../lib/editor-themes';
 
 function modelFor(path: string, content: string): monaco.editor.ITextModel {
   const uri = monaco.Uri.parse(`file:///${path}`);
@@ -151,6 +58,7 @@ export function CodeEditor() {
   const settings = useWorkspace((state) => state.project?.settings);
   const file = useWorkspace((state) => (state.activeTab ? state.files[state.activeTab] : null));
   const compileErrors = useWorkspace((state) => state.compileErrors);
+  const revealTarget = useWorkspace((state) => state.revealTarget);
   const { resolved } = useTheme();
 
   useEffect(() => {
@@ -220,6 +128,26 @@ export function CodeEditor() {
     }
   }, [activeTab, file]);
 
+  /*
+   * Search results scroll the editor to their line. The model swap above runs
+   * on the same activeTab change, so this waits a frame to let it land —
+   * revealing a line on the outgoing model would scroll the wrong file.
+   */
+  useEffect(() => {
+    const instance = editor.current;
+    if (!instance || !revealTarget) return;
+    if (revealTarget.path !== activeTab) return;
+
+    const frame = requestAnimationFrame(() => {
+      instance.revealLineInCenter(revealTarget.line);
+      instance.setPosition({ lineNumber: revealTarget.line, column: revealTarget.column });
+      instance.focus();
+      useWorkspace.getState().consumeReveal();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [revealTarget, activeTab]);
+
   useEffect(() => {
     if (!editor.current || !settings) return;
     editor.current.updateOptions({
@@ -262,28 +190,72 @@ export function CodeEditor() {
     }
   }, [compileErrors]);
 
-  if (!activeTab || !file) {
-    return (
-      <div className="flex h-full items-center justify-center bg-surface">
-        <p className="text-secondary font-light text-muted-foreground">
-          Select a file to start editing
-        </p>
-      </div>
-    );
-  }
-
-  if (isImagePath(activeTab) && file.type === 'file') {
-    const source =
-      file.encoding === 'base64'
+  const image =
+    activeTab && file?.type === 'file' && isImagePath(activeTab)
+      ? file.encoding === 'base64'
         ? `data:${mimeForPath(activeTab)};base64,${file.content}`
-        : `data:${mimeForPath(activeTab)};utf8,${encodeURIComponent(file.content)}`;
+        : `data:${mimeForPath(activeTab)};utf8,${encodeURIComponent(file.content)}`
+      : null;
 
-    return (
-      <div className="flex h-full items-center justify-center bg-background p-8">
-        <img src={source} alt={activeTab} className="max-h-full max-w-full object-contain" />
-      </div>
-    );
-  }
+  const media =
+    activeTab && file?.type === 'file' && isMediaPath(activeTab) ? { path: activeTab, file } : null;
 
-  return <div ref={host} className="h-full w-full bg-surface" />;
+  const pdf =
+    activeTab && file?.type === 'file' && isPdfPath(activeTab) ? { path: activeTab, file } : null;
+
+  const docx =
+    activeTab && file?.type === 'file' && isDocxPath(activeTab) ? { path: activeTab, file } : null;
+
+  const showEditor = Boolean(activeTab && file && !image && !media && !pdf && !docx);
+
+  /*
+   * The host stays mounted in every state.
+   *
+   * Returning a different <div> when no tab is open used to leave the editor
+   * on screen: React reuses a DOM node when the element type and position
+   * match, so it appended the placeholder and updated the class but left
+   * Monaco's own DOM — which React never created — untouched. Keeping one host
+   * and covering it sidesteps that, and it also means the editor instance
+   * survives closing every tab rather than being orphaned and never rebuilt.
+   *
+   * `invisible` rather than `hidden`: the box keeps its size, so Monaco holds
+   * its layout instead of measuring zero and having to recover on reopen.
+   */
+  return (
+    <div className="relative h-full w-full bg-surface">
+      <div
+        ref={host}
+        aria-hidden={!showEditor}
+        className={cn('h-full w-full', !showEditor && 'invisible')}
+      />
+
+      {!showEditor && (
+        <div
+          className={cn(
+            'absolute inset-0',
+            media || pdf || docx ? '' : 'flex items-center justify-center',
+            image ? 'bg-background p-8' : media || pdf || docx ? '' : 'bg-surface',
+          )}
+        >
+          {media ? (
+            <MediaViewer path={media.path} file={media.file} />
+          ) : pdf ? (
+            <PdfPreview path={pdf.path} file={pdf.file} />
+          ) : docx ? (
+            <DocxPreview path={docx.path} file={docx.file} />
+          ) : image ? (
+            <img
+              src={image}
+              alt={activeTab ?? ''}
+              className="max-h-full max-w-full object-contain"
+            />
+          ) : (
+            <p className="text-secondary font-light text-muted-foreground">
+              Select a file to start editing
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
