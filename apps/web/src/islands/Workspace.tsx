@@ -6,7 +6,13 @@ import {
   type ImperativePanelHandle,
 } from 'react-resizable-panels';
 import { Button, Skeleton, Toaster, TooltipProvider, cn } from '@mai-habi/ui';
-import { FilePlus, FolderPlus, PanelLeftClose, TerminalSquare, X } from 'lucide-react';
+import {
+  FilePlus,
+  FolderPlus,
+  PanelLeftClose,
+  TerminalSquare,
+  X,
+} from 'lucide-react';
 import { useWorkspace, type SidebarView } from '../state/workspace';
 import { useShortcuts } from '../lib/shortcuts';
 import { disposeCompiler } from '../lib/compile';
@@ -20,7 +26,11 @@ import { ShareDialog } from '../components/dialogs/ShareDialog';
 import { SettingsDialog } from '../components/dialogs/SettingsDialog';
 import { FontsDialog } from '../components/dialogs/FontsDialog';
 import { PromptDialog } from '../components/dialogs/PromptDialog';
+import { HistoryDialog } from '../components/dialogs/HistoryDialog';
+import { DesignTokenDialog } from '../components/dialogs/DesignTokenDialog';
+import { MockApiDialog } from '../components/dialogs/MockApiDialog';
 import { OnboardingWelcome } from '../components/OnboardingWelcome';
+import { createSnapshot } from '../lib/snapshots';
 
 type Layout = 'mobile' | 'tablet' | 'desktop';
 
@@ -47,7 +57,9 @@ export default function Workspace({ projectId }: { projectId: string }) {
   const explorerRef = useRef<ImperativePanelHandle>(null);
   const bottomRef = useRef<ImperativePanelHandle>(null);
   const layout = useLayout();
-  const [mobileView, setMobileView] = useState<'files' | 'code' | 'console'>('code');
+  const [mobileView, setMobileView] = useState<'files' | 'code' | 'console'>(
+    'code',
+  );
 
   useShortcuts();
 
@@ -63,6 +75,21 @@ export default function Workspace({ projectId }: { projectId: string }) {
       window.removeEventListener('beforeunload', onBeforeUnload);
       disposeCompiler();
     };
+  }, []);
+
+  /*
+   * Automatic version history: take a snapshot periodically. createSnapshot
+   * skips when nothing changed since the last one, so an idle project never
+   * fills the list.
+   */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const state = useWorkspace.getState();
+      if (state.project)
+        void createSnapshot(state.project.id, state.files, 'Auto');
+    }, 90_000);
+
+    return () => clearInterval(interval);
   }, []);
 
   /*
@@ -97,12 +124,14 @@ export default function Workspace({ projectId }: { projectId: string }) {
     return (
       <div className="grid h-full place-items-center px-6 text-center">
         <div>
-          <p className="text-section font-light">This project could not be found</p>
+          <p className="text-section font-light">
+            This project could not be found
+          </p>
           <p className="mt-1.5 text-secondary font-light text-muted-foreground">
             It may have been created in a different browser, or deleted.
           </p>
           <Button className="mt-5" variant="outline" asChild>
-            <a href="/">Back to projects</a>
+            <a href="/projects">Back to projects</a>
           </Button>
         </div>
       </div>
@@ -157,7 +186,9 @@ export default function Workspace({ projectId }: { projectId: string }) {
                 size="icon-sm"
                 className="touch-target"
                 aria-label="New folder"
-                onClick={() => useWorkspace.getState().requestNewNode('directory')}
+                onClick={() =>
+                  useWorkspace.getState().requestNewNode('directory')
+                }
               >
                 <FolderPlus />
               </Button>
@@ -205,6 +236,9 @@ export default function Workspace({ projectId }: { projectId: string }) {
       <SettingsDialog />
       <FontsDialog />
       <PromptDialog />
+      <HistoryDialog />
+      <DesignTokenDialog />
+      <MockApiDialog />
       <OnboardingWelcome />
       <Toaster />
     </>
@@ -220,7 +254,12 @@ export default function Workspace({ projectId }: { projectId: string }) {
             {mobileView === 'files' && sidebar}
             {mobileView === 'code' && editorArea}
             {/* Kept mounted so the preview keeps running and logging. */}
-            <div className={cn('h-full', mobileView === 'console' ? 'block' : 'hidden')}>
+            <div
+              className={cn(
+                'h-full',
+                mobileView === 'console' ? 'block' : 'hidden',
+              )}
+            >
               <BottomPanel />
             </div>
           </div>
@@ -239,7 +278,9 @@ export default function Workspace({ projectId }: { projectId: string }) {
                   'flex-1 text-label font-light capitalize outline-none',
                   'transition-colors duration-[--duration-fast]',
                   'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
-                  mobileView === view ? 'bg-surface-active text-foreground' : 'text-muted-foreground',
+                  mobileView === view
+                    ? 'bg-surface-active text-foreground'
+                    : 'text-muted-foreground',
                 )}
               >
                 {view}
@@ -261,7 +302,10 @@ export default function Workspace({ projectId }: { projectId: string }) {
           {editorArea}
 
           {!explorerCollapsed && (
-            <Drawer onClose={() => useWorkspace.getState().toggleExplorer()} side="left">
+            <Drawer
+              onClose={() => useWorkspace.getState().toggleExplorer()}
+              side="left"
+            >
               <div className="h-full w-72">{sidebar}</div>
             </Drawer>
           )}
@@ -269,7 +313,8 @@ export default function Workspace({ projectId }: { projectId: string }) {
           <div
             className={cn(
               'absolute inset-x-0 bottom-0 h-72 border-t border-border',
-              panelCollapsed && 'pointer-events-none h-0 overflow-hidden opacity-0',
+              panelCollapsed &&
+                'pointer-events-none h-0 overflow-hidden opacity-0',
             )}
           >
             <BottomPanel />
@@ -295,7 +340,8 @@ export default function Workspace({ projectId }: { projectId: string }) {
           collapsible
           collapsedSize={0}
           onCollapse={() => {
-            if (!useWorkspace.getState().explorerCollapsed) useWorkspace.getState().toggleExplorer();
+            if (!useWorkspace.getState().explorerCollapsed)
+              useWorkspace.getState().toggleExplorer();
           }}
         >
           {sidebar}
@@ -334,7 +380,8 @@ export default function Workspace({ projectId }: { projectId: string }) {
               collapsible
               collapsedSize={0}
               onCollapse={() => {
-                if (!useWorkspace.getState().panelCollapsed) useWorkspace.getState().togglePanel();
+                if (!useWorkspace.getState().panelCollapsed)
+                  useWorkspace.getState().togglePanel();
               }}
             >
               <BottomPanel />
@@ -382,7 +429,11 @@ function Drawer({
 
   return (
     <>
-      <div className="z-overlay absolute inset-0 bg-backdrop" onClick={onClose} aria-hidden="true" />
+      <div
+        className="z-overlay absolute inset-0 bg-backdrop"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         className={cn(
           'z-dialog absolute bg-surface shadow-overlay',
@@ -421,9 +472,14 @@ function useLayout(): Layout {
 
   useEffect(() => {
     const mobile = window.matchMedia('(max-width: 767px)');
-    const tablet = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
+    const tablet = window.matchMedia(
+      '(min-width: 768px) and (max-width: 1023px)',
+    );
 
-    const update = () => setLayout(mobile.matches ? 'mobile' : tablet.matches ? 'tablet' : 'desktop');
+    const update = () =>
+      setLayout(
+        mobile.matches ? 'mobile' : tablet.matches ? 'tablet' : 'desktop',
+      );
 
     update();
     mobile.addEventListener('change', update);

@@ -980,7 +980,7 @@ export default function RestClient() {
     <div className="flex h-screen flex-col bg-background">
       <header className="z-header flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
         <Button variant="ghost" size="sm" className="touch-target" asChild>
-          <a href="/">
+          <a href="/projects">
             <ArrowLeft /> <span className="hidden sm:inline">Playground</span>
           </a>
         </Button>

@@ -131,7 +131,10 @@ export default function ViewerShell({ id }: { id: string }) {
     // Resolve the entry the same way the editor does: a Next.js project (or any
     // import with no explicit mount) has an empty entry, so a mount is
     // synthesised rather than compiling "" and failing.
-    const prepared = prepareSnapshotCompile(source.snapshot.files, source.snapshot.entryFile);
+    const prepared = prepareSnapshotCompile(
+      source.snapshot.files,
+      source.snapshot.entryFile,
+    );
     if (!prepared) {
       setState({
         status: 'failed',
@@ -154,7 +157,11 @@ export default function ViewerShell({ id }: { id: string }) {
 
     let result: CompileResult;
     try {
-      result = await getCompiler().compile(prepared.files, prepared.entry, true);
+      result = await getCompiler().compile(
+        prepared.files,
+        prepared.entry,
+        true,
+      );
     } catch (error) {
       // A newer load() started a fresh compile and superseded this one. That
       // load owns the state now, so this one bows out silently rather than
@@ -173,7 +180,10 @@ export default function ViewerShell({ id }: { id: string }) {
         css: '',
         errors: [
           {
-            message: error instanceof Error ? error.message : 'The compiler could not start.',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'The compiler could not start.',
             location: null,
           },
         ],
@@ -204,7 +214,8 @@ export default function ViewerShell({ id }: { id: string }) {
       // The preview has an opaque origin, so the source window is its identity.
       if (event.source !== frame.current?.contentWindow) return;
       if (!isPreviewMessage(event.data)) return;
-      if (event.data.type === 'preview:error') setRuntimeError(event.data.message);
+      if (event.data.type === 'preview:error')
+        setRuntimeError(event.data.message);
     };
 
     window.addEventListener('message', onMessage);
@@ -220,12 +231,14 @@ export default function ViewerShell({ id }: { id: string }) {
   }, []);
 
   const toggleImmersive = useCallback(() => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    if (document.fullscreenElement)
+      void document.exitFullscreen().catch(() => {});
     else void stage.current?.requestFullscreen?.().catch(() => {});
   }, []);
 
   const preset = useMemo(
-    () => DEVICE_PRESETS.find((entry) => entry.id === device) ?? DEVICE_PRESETS[0],
+    () =>
+      DEVICE_PRESETS.find((entry) => entry.id === device) ?? DEVICE_PRESETS[0],
     [device],
   );
 
@@ -236,6 +249,7 @@ export default function ViewerShell({ id }: { id: string }) {
         css: state.css,
         tailwind: state.snapshot?.tailwind ?? false,
         fonts: state.snapshot?.fonts ?? [],
+        mockApiRoutes: state.snapshot?.mockApiRoutes ?? [],
         origin: window.location.origin,
         title: state.snapshot?.name,
         nonce: cspNonce(),
@@ -254,7 +268,9 @@ export default function ViewerShell({ id }: { id: string }) {
    * the project setting can still hide it there too.
    */
   const showToolbar =
-    Boolean(state.snapshot) && state.editable && (state.snapshot?.viewerToolbar ?? true);
+    Boolean(state.snapshot) &&
+    state.editable &&
+    (state.snapshot?.viewerToolbar ?? true);
 
   return (
     <TooltipProvider>
@@ -293,7 +309,10 @@ export default function ViewerShell({ id }: { id: string }) {
 
         <div ref={stage} className="relative min-h-0 flex-1 bg-background">
           {state.status === 'loading' && (
-            <div className="grid h-full place-items-center p-6" aria-busy="true">
+            <div
+              className="grid h-full place-items-center p-6"
+              aria-busy="true"
+            >
               <Skeleton className="h-40 w-full max-w-2xl" />
             </div>
           )}
@@ -303,11 +322,11 @@ export default function ViewerShell({ id }: { id: string }) {
               <div className="max-w-md text-center">
                 <p className="text-section font-light">Nothing to show</p>
                 <p className="mt-1.5 text-secondary font-light text-muted-foreground">
-                  This link is not available. It may have expired, or the project may only exist in
-                  another browser.
+                  This link is not available. It may have expired, or the
+                  project may only exist in another browser.
                 </p>
                 <Button className="mt-5" variant="outline" asChild>
-                  <a href="/">Go to the playground</a>
+                  <a href="/projects">Go to the playground</a>
                 </Button>
               </div>
             </div>
@@ -319,7 +338,9 @@ export default function ViewerShell({ id }: { id: string }) {
             <div
               className={cn(
                 'h-full w-full',
-                preset.width && !immersive ? 'grid place-items-center overflow-auto p-6' : '',
+                preset.width && !immersive
+                  ? 'grid place-items-center overflow-auto p-6'
+                  : '',
               )}
             >
               {/*
@@ -335,7 +356,11 @@ export default function ViewerShell({ id }: { id: string }) {
                 )}
                 style={
                   preset.width && !immersive
-                    ? { width: preset.width, height: preset.height ?? undefined, maxWidth: '100%' }
+                    ? {
+                        width: preset.width,
+                        height: preset.height ?? undefined,
+                        maxWidth: '100%',
+                      }
                     : undefined
                 }
               >
@@ -360,14 +385,18 @@ export default function ViewerShell({ id }: { id: string }) {
                 aria-expanded={toolbarOpen}
                 onPointerEnter={revealToolbar}
                 onFocus={revealToolbar}
-                onClick={() => (toolbarOpen ? setToolbarOpen(false) : revealToolbar())}
+                onClick={() =>
+                  toolbarOpen ? setToolbarOpen(false) : revealToolbar()
+                }
                 className={cn(
                   'group pointer-events-auto absolute left-1/2 top-0 grid h-6 w-11 -translate-x-1/2 place-items-center',
                   'rounded-b-lg border border-t-0 border-border bg-surface/85 text-muted-foreground shadow-overlay backdrop-blur',
                   'transition-[opacity,color,transform] duration-[--duration-normal] ease-[--ease-standard]',
                   'hover:text-foreground',
                   'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
-                  toolbarOpen ? 'pointer-events-none -translate-y-1 opacity-0' : 'opacity-60 hover:opacity-100',
+                  toolbarOpen
+                    ? 'pointer-events-none -translate-y-1 opacity-0'
+                    : 'opacity-60 hover:opacity-100',
                 )}
               >
                 <ChevronDown
@@ -390,15 +419,27 @@ export default function ViewerShell({ id }: { id: string }) {
                 )}
               >
                 {state.editable ? (
-                  <Button variant="ghost" size="sm" className="touch-target" asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="touch-target"
+                    asChild
+                  >
                     <a href={`/editor/${id}`}>
-                      <ArrowLeft /> <span className="hidden sm:inline">Editor</span>
+                      <ArrowLeft />{' '}
+                      <span className="hidden sm:inline">Editor</span>
                     </a>
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="sm" className="touch-target" asChild>
-                    <a href="/">
-                      <ArrowLeft /> <span className="hidden sm:inline">Playground</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="touch-target"
+                    asChild
+                  >
+                    <a href="/projects">
+                      <ArrowLeft />{' '}
+                      <span className="hidden sm:inline">Playground</span>
                     </a>
                   </Button>
                 )}
@@ -443,7 +484,10 @@ export default function ViewerShell({ id }: { id: string }) {
                   {preset.width ? ` · ${preset.width} × ${preset.height}` : ''}
                 </span>
 
-                <span aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+                <span
+                  aria-hidden="true"
+                  className="mx-0.5 h-4 w-px shrink-0 bg-border"
+                />
 
                 {state.sourceVisible && state.snapshot && (
                   <Button
@@ -464,7 +508,9 @@ export default function ViewerShell({ id }: { id: string }) {
                     variant="ghost"
                     size="icon-sm"
                     className="touch-target"
-                    aria-label={immersive ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    aria-label={
+                      immersive ? 'Exit fullscreen' : 'Enter fullscreen'
+                    }
                     onClick={toggleImmersive}
                   >
                     {immersive ? <Minimize2 /> : <Maximize2 />}
@@ -485,7 +531,10 @@ export default function ViewerShell({ id }: { id: string }) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Viewport</DropdownMenuLabel>
                     {DEVICE_PRESETS.map((entry) => (
-                      <DropdownMenuItem key={entry.id} onSelect={() => setDevice(entry.id)}>
+                      <DropdownMenuItem
+                        key={entry.id}
+                        onSelect={() => setDevice(entry.id)}
+                      >
                         {entry.label}
                         {entry.width && (
                           <span className="ml-auto text-micro text-muted-foreground">
@@ -497,7 +546,9 @@ export default function ViewerShell({ id }: { id: string }) {
                     {state.sourceVisible && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => setShowSource((value) => !value)}>
+                        <DropdownMenuItem
+                          onSelect={() => setShowSource((value) => !value)}
+                        >
                           <Code2 /> {showSource ? 'Hide source' : 'View source'}
                         </DropdownMenuItem>
                       </>
@@ -521,7 +572,10 @@ export default function ViewerShell({ id }: { id: string }) {
           )}
 
           {showSource && state.snapshot && (
-            <SourceView files={state.snapshot.files} onClose={() => setShowSource(false)} />
+            <SourceView
+              files={state.snapshot.files}
+              onClose={() => setShowSource(false)}
+            />
           )}
         </div>
       </div>

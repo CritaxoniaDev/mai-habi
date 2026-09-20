@@ -13,25 +13,52 @@
 
 /*
  * Monaco is imported feature by feature rather than through its `editor.main`
- * barrel: the barrel registers every bundled grammar (ABAP, Solidity, …) and
- * roughly triples the editor bundle for languages this product never opens.
+ * barrel. These are the grammars recognized by `detectLanguageForPath`; obscure
+ * bundled grammars that the file detector never selects stay out of the app.
  */
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import 'monaco-editor/esm/vs/editor/editor.all.js';
-import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
-import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution';
-import 'monaco-editor/esm/vs/basic-languages/css/css.contribution';
-import 'monaco-editor/esm/vs/basic-languages/html/html.contribution';
-import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
-import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
-import 'monaco-editor/esm/vs/language/css/monaco.contribution';
-import 'monaco-editor/esm/vs/language/html/monaco.contribution';
-import 'monaco-editor/esm/vs/language/json/monaco.contribution';
+import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+import "monaco-editor/esm/vs/editor/editor.all.js";
+import "monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution";
+import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
+import "monaco-editor/esm/vs/basic-languages/css/css.contribution";
+import "monaco-editor/esm/vs/basic-languages/html/html.contribution";
+import "monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution";
+import "monaco-editor/esm/vs/basic-languages/cpp/cpp.contribution";
+import "monaco-editor/esm/vs/basic-languages/csharp/csharp.contribution";
+import "monaco-editor/esm/vs/basic-languages/dart/dart.contribution";
+import "monaco-editor/esm/vs/basic-languages/dockerfile/dockerfile.contribution";
+import "monaco-editor/esm/vs/basic-languages/go/go.contribution";
+import "monaco-editor/esm/vs/basic-languages/graphql/graphql.contribution";
+import "monaco-editor/esm/vs/basic-languages/handlebars/handlebars.contribution";
+import "monaco-editor/esm/vs/basic-languages/hcl/hcl.contribution";
+import "monaco-editor/esm/vs/basic-languages/julia/julia.contribution";
+import "monaco-editor/esm/vs/basic-languages/kotlin/kotlin.contribution";
+import "monaco-editor/esm/vs/basic-languages/less/less.contribution";
+import "monaco-editor/esm/vs/basic-languages/lua/lua.contribution";
+import "monaco-editor/esm/vs/basic-languages/mdx/mdx.contribution";
+import "monaco-editor/esm/vs/basic-languages/php/php.contribution";
+import "monaco-editor/esm/vs/basic-languages/powershell/powershell.contribution";
+import "monaco-editor/esm/vs/basic-languages/python/python.contribution";
+import "monaco-editor/esm/vs/basic-languages/r/r.contribution";
+import "monaco-editor/esm/vs/basic-languages/ruby/ruby.contribution";
+import "monaco-editor/esm/vs/basic-languages/rust/rust.contribution";
+import "monaco-editor/esm/vs/basic-languages/scala/scala.contribution";
+import "monaco-editor/esm/vs/basic-languages/scss/scss.contribution";
+import "monaco-editor/esm/vs/basic-languages/shell/shell.contribution";
+import "monaco-editor/esm/vs/basic-languages/solidity/solidity.contribution";
+import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
+import "monaco-editor/esm/vs/basic-languages/swift/swift.contribution";
+import "monaco-editor/esm/vs/basic-languages/xml/xml.contribution";
+import "monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution";
+import "monaco-editor/esm/vs/language/typescript/monaco.contribution";
+import "monaco-editor/esm/vs/language/css/monaco.contribution";
+import "monaco-editor/esm/vs/language/html/monaco.contribution";
+import "monaco-editor/esm/vs/language/json/monaco.contribution";
 
-import { emmetHTML, emmetCSS, emmetJSX } from 'emmet-monaco-es';
+import { emmetHTML, emmetCSS, emmetJSX } from "emmet-monaco-es";
 
-import { MONACO_THEMES } from './editor-themes';
-import { loadReactTypes } from './monaco-types';
+import { MONACO_THEMES } from "./editor-themes";
+import { loadReactTypes } from "./monaco-types";
 
 declare global {
   interface Window {
@@ -46,36 +73,51 @@ declare global {
  * literal for that detection to fire, so the labels map to explicit `new Worker`
  * calls rather than a shared factory.
  */
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.MonacoEnvironment = {
     getWorker(_id, label) {
-      if (label === 'json') {
+      if (label === "json") {
         return new Worker(
-          new URL('monaco-editor/esm/vs/language/json/json.worker.js', import.meta.url),
-          { type: 'module' },
+          new URL(
+            "monaco-editor/esm/vs/language/json/json.worker.js",
+            import.meta.url,
+          ),
+          { type: "module" },
         );
       }
-      if (label === 'css' || label === 'scss' || label === 'less') {
+      if (label === "css" || label === "scss" || label === "less") {
         return new Worker(
-          new URL('monaco-editor/esm/vs/language/css/css.worker.js', import.meta.url),
-          { type: 'module' },
+          new URL(
+            "monaco-editor/esm/vs/language/css/css.worker.js",
+            import.meta.url,
+          ),
+          { type: "module" },
         );
       }
-      if (label === 'html' || label === 'handlebars' || label === 'razor') {
+      if (label === "html" || label === "handlebars" || label === "razor") {
         return new Worker(
-          new URL('monaco-editor/esm/vs/language/html/html.worker.js', import.meta.url),
-          { type: 'module' },
+          new URL(
+            "monaco-editor/esm/vs/language/html/html.worker.js",
+            import.meta.url,
+          ),
+          { type: "module" },
         );
       }
-      if (label === 'typescript' || label === 'javascript') {
+      if (label === "typescript" || label === "javascript") {
         return new Worker(
-          new URL('monaco-editor/esm/vs/language/typescript/ts.worker.js', import.meta.url),
-          { type: 'module' },
+          new URL(
+            "monaco-editor/esm/vs/language/typescript/ts.worker.js",
+            import.meta.url,
+          ),
+          { type: "module" },
         );
       }
       return new Worker(
-        new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url),
-        { type: 'module' },
+        new URL(
+          "monaco-editor/esm/vs/editor/editor.worker.js",
+          import.meta.url,
+        ),
+        { type: "module" },
       );
     },
   };
@@ -97,7 +139,7 @@ export function configureMonaco(): void {
     module: monaco.languages.typescript.ModuleKind.ESNext,
     moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
     jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
-    jsxImportSource: 'react',
+    jsxImportSource: "react",
     allowJs: true,
     allowNonTsExtensions: true,
     esModuleInterop: true,
@@ -107,8 +149,12 @@ export function configureMonaco(): void {
     skipLibCheck: true,
   };
 
-  monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
-  monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
+  monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
+    compilerOptions,
+  );
+  monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
+    compilerOptions,
+  );
   monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
 
   for (const [name, data] of Object.values(MONACO_THEMES)) {
@@ -120,9 +166,9 @@ export function configureMonaco(): void {
    * of the Emmet vocabulary. The JSX variant covers .tsx/.jsx and emits
    * `className` instead of `class`.
    */
-  emmetHTML(monaco, ['html']);
-  emmetCSS(monaco, ['css', 'scss', 'less']);
-  emmetJSX(monaco, ['javascript', 'typescript']);
+  emmetHTML(monaco, ["html"]);
+  emmetCSS(monaco, ["css", "scss", "less"]);
+  emmetJSX(monaco, ["javascript", "typescript"]);
 
   void loadReactTypes(monaco);
 }

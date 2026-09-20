@@ -68,11 +68,66 @@ create table if not exists public.shared_projects (
 
 create index if not exists shared_share_idx on public.shared_projects (share_id);
 
+/* ----------------------------------------------------------- published APIs */
+
+/*
+ * Public API definitions are intentionally readable: their configured JSON is
+ * what the public endpoint returns. Only the owning account may write or remove
+ * them. Random ids make endpoints shareable without reserving global slugs.
+ */
+create table if not exists public.published_apis (
+  id           text primary key,
+  owner_id     uuid not null references auth.users (id) on delete cascade,
+  name         text not null default 'Untitled API',
+  routes       jsonb not null default '[]'::jsonb,
+  cors_origin  text not null default '*',
+  enabled      boolean not null default true,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+
+  constraint published_apis_id_shape check (id ~ '^api_[a-z0-9]{16,64}$'),
+  constraint published_apis_routes_array check (jsonb_typeof(routes) = 'array'),
+  constraint published_apis_routes_size check (octet_length(routes::text) <= 262144),
+  constraint published_apis_cors_size check (char_length(cors_origin) <= 300)
+);
+
+create index if not exists published_apis_owner_idx
+  on public.published_apis (owner_id, updated_at desc);
+
+/* ---------------------------------------------------------- backend services */
+
+create table if not exists public.backend_services (
+  id             text primary key,
+  owner_id       uuid not null references auth.users (id) on delete cascade,
+  name           text not null default 'Untitled service',
+  project_name   text not null,
+  deployment_url text not null,
+  enabled        boolean not null default true,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+
+  constraint backend_services_id_shape check (id ~ '^svc_[a-z0-9]{16,64}$')
+);
+
+-- Keep this outside CREATE TABLE so reapplying the schema also repairs an
+-- existing installation. [.] avoids PostgreSQL string/regex slash ambiguity.
+alter table public.backend_services
+  drop constraint if exists backend_services_vercel_url;
+alter table public.backend_services
+  add constraint backend_services_vercel_url check (
+    deployment_url ~ '^https://[a-z0-9-]+([.][a-z0-9-]+)*[.]vercel[.]app$'
+  );
+
+create index if not exists backend_services_owner_idx
+  on public.backend_services (owner_id, updated_at desc);
+
 /* ----------------------------------------------------------------------- rls */
 
 alter table public.projects        enable row level security;
 alter table public.project_files   enable row level security;
 alter table public.shared_projects enable row level security;
+alter table public.published_apis  enable row level security;
+alter table public.backend_services enable row level security;
 
 -- Projects: only the signed-in owner can see or change their own rows.
 --
@@ -126,6 +181,39 @@ drop policy if exists shared_insert_guest on public.shared_projects;
 create policy shared_insert_guest on public.shared_projects
   for insert with check (owner_id is null and guest_id is not null);
 
+-- Anyone may resolve an enabled API; only its owner may mutate it.
+drop policy if exists published_apis_read_enabled on public.published_apis;
+create policy published_apis_read_enabled on public.published_apis
+  for select using (enabled or auth.uid() = owner_id);
+
+drop policy if exists published_apis_insert_own on public.published_apis;
+create policy published_apis_insert_own on public.published_apis
+  for insert with check (auth.uid() = owner_id);
+
+drop policy if exists published_apis_update_own on public.published_apis;
+create policy published_apis_update_own on public.published_apis
+  for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+
+drop policy if exists published_apis_delete_own on public.published_apis;
+create policy published_apis_delete_own on public.published_apis
+  for delete using (auth.uid() = owner_id);
+
+drop policy if exists backend_services_read_enabled on public.backend_services;
+create policy backend_services_read_enabled on public.backend_services
+  for select using (enabled or auth.uid() = owner_id);
+
+drop policy if exists backend_services_insert_own on public.backend_services;
+create policy backend_services_insert_own on public.backend_services
+  for insert with check (auth.uid() = owner_id);
+
+drop policy if exists backend_services_update_own on public.backend_services;
+create policy backend_services_update_own on public.backend_services
+  for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+
+drop policy if exists backend_services_delete_own on public.backend_services;
+create policy backend_services_delete_own on public.backend_services
+  for delete using (auth.uid() = owner_id);
+
 /* ---------------------------------------------------------------- timestamps */
 
 create or replace function public.touch_updated_at()
@@ -144,4 +232,12 @@ create trigger projects_touch before update on public.projects
 
 drop trigger if exists project_files_touch on public.project_files;
 create trigger project_files_touch before update on public.project_files
+  for each row execute function public.touch_updated_at();
+
+drop trigger if exists published_apis_touch on public.published_apis;
+create trigger published_apis_touch before update on public.published_apis
+  for each row execute function public.touch_updated_at();
+
+drop trigger if exists backend_services_touch on public.backend_services;
+create trigger backend_services_touch before update on public.backend_services
   for each row execute function public.touch_updated_at();

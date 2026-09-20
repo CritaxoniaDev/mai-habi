@@ -1,4 +1,4 @@
-import type { FontConfig } from '@mai-habi/types';
+import type { FontConfig, MockApiRoute } from '@mai-habi/types';
 import { ALLOWED_PACKAGES, TAILWIND_URL } from './runtime';
 import { cssFontFamily, googleFontsHref } from './fonts';
 
@@ -19,6 +19,8 @@ export interface PreviewOptions {
   tailwind: boolean;
   /** Google Fonts loaded into the document; empty when the project uses none. */
   fonts?: FontConfig[];
+  /** Browser-local API fixtures installed before the project module runs. */
+  mockApiRoutes?: MockApiRoute[];
   /** Absolute origin serving the platform React runtime. */
   origin: string;
   title?: string;
@@ -53,8 +55,12 @@ function fontMarkup(fonts: FontConfig[]): string {
     `<link rel="stylesheet" href="${escapeHtml(href)}" />`;
 
   // The last font marked as default wins, matching how the picker enforces one.
-  const preferred = [...fonts].reverse().find((font) => font.defaultBody && font.family.trim());
-  const stack = preferred ? `${cssFontFamily(preferred.family)},system-ui,sans-serif` : '';
+  const preferred = [...fonts]
+    .reverse()
+    .find((font) => font.defaultBody && font.family.trim());
+  const stack = preferred
+    ? `${cssFontFamily(preferred.family)},system-ui,sans-serif`
+    : '';
   const rule = preferred
     ? `<style>:root{--font-body:${stack}}:where(html){font-family:var(--font-body)}</style>`
     : '';
@@ -63,7 +69,7 @@ function fontMarkup(fonts: FontConfig[]): string {
 }
 
 /** Runs inside the preview document. Serialised with `Function.toString()`. */
-function previewBridge(): void {
+function previewBridge(mockRoutes: MockApiRoute[]): void {
   /*
    * Publish this document's CSP nonce.
    *
@@ -80,7 +86,8 @@ function previewBridge(): void {
    * authorises execution inside this throwaway document.
    */
   const current = document.currentScript as HTMLScriptElement | null;
-  (window as unknown as { __previewNonce?: string }).__previewNonce = current?.nonce ?? '';
+  (window as unknown as { __previewNonce?: string }).__previewNonce =
+    current?.nonce ?? '';
 
   const post = (message: Record<string, unknown>) => {
     try {
@@ -106,10 +113,268 @@ function previewBridge(): void {
   for (const level of levels) {
     const original = console[level].bind(console);
     console[level] = (...args: unknown[]) => {
-      post({ type: 'preview:console', level, text: args.map(describe).join(' ') });
+      post({
+        type: 'preview:console',
+        level,
+        text: args.map(describe).join(' '),
+      });
       original(...args);
     };
   }
+
+  /*
+   * Request fixtures live inside the opaque-origin frame. A service worker
+   * cannot control a sandboxed srcdoc document; intercepting fetch/XHR here
+   * preserves that isolation while giving projects the same offline mock API.
+   */
+  const routeFor = (method: string, input: string) => {
+    let path = input;
+    try {
+      path = new URL(input, document.baseURI).pathname;
+    } catch {
+      path = input.split('?')[0];
+    }
+
+    return mockRoutes.find(
+      (route) =>
+        route.enabled &&
+        route.method === method.toUpperCase() &&
+        route.path.split('?')[0] === path,
+    );
+  };
+
+  const mockedResponse = async (route: MockApiRoute): Promise<Response> => {
+    const delay = Math.max(0, Math.min(30_000, Number(route.delayMs) || 0));
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+
+    const failed =
+      Math.random() * 100 < Math.max(0, Math.min(100, route.failureRate));
+    const status = failed
+      ? 500
+      : Math.max(100, Math.min(599, Number(route.status) || 200));
+    const body = failed
+      ? JSON.stringify({ error: 'Simulated failure' })
+      : route.response;
+    console.info(
+      `[mock] ${route.method} ${route.path} → ${status}${delay ? ` (${delay} ms)` : ''}`,
+    );
+
+    return new Response(body, {
+      status,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'X-Habi-Mock': 'true',
+      },
+    });
+  };
+
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = input instanceof Request ? input : null;
+    const method = String(
+      init?.method ?? request?.method ?? 'GET',
+    ).toUpperCase();
+    const url = request?.url ?? String(input);
+    const route = routeFor(method, url);
+    return route ? mockedResponse(route) : nativeFetch(input, init);
+  };
+
+  const NativeXHR = window.XMLHttpRequest;
+  class MockXMLHttpRequest extends EventTarget {
+    static readonly UNSENT = 0;
+    static readonly OPENED = 1;
+    static readonly HEADERS_RECEIVED = 2;
+    static readonly LOADING = 3;
+    static readonly DONE = 4;
+    readonly UNSENT = 0;
+    readonly OPENED = 1;
+    readonly HEADERS_RECEIVED = 2;
+    readonly LOADING = 3;
+    readonly DONE = 4;
+
+    readyState = 0;
+    response: unknown = null;
+    responseText = '';
+    responseURL = '';
+    responseXML: Document | null = null;
+    status = 0;
+    statusText = '';
+
+    onabort: ((this: XMLHttpRequest, ev: ProgressEvent) => unknown) | null =
+      null;
+    onerror: ((this: XMLHttpRequest, ev: ProgressEvent) => unknown) | null =
+      null;
+    onload: ((this: XMLHttpRequest, ev: ProgressEvent) => unknown) | null =
+      null;
+    onloadend: ((this: XMLHttpRequest, ev: ProgressEvent) => unknown) | null =
+      null;
+    onloadstart: ((this: XMLHttpRequest, ev: ProgressEvent) => unknown) | null =
+      null;
+    onprogress: ((this: XMLHttpRequest, ev: ProgressEvent) => unknown) | null =
+      null;
+    onreadystatechange: ((this: XMLHttpRequest, ev: Event) => unknown) | null =
+      null;
+    ontimeout: ((this: XMLHttpRequest, ev: ProgressEvent) => unknown) | null =
+      null;
+
+    private method = 'GET';
+    private url = '';
+    private native: XMLHttpRequest | null = null;
+    private route: MockApiRoute | null = null;
+    private mockedHeaders = '';
+    private responseTypeValue: XMLHttpRequestResponseType = '';
+    private timeoutValue = 0;
+    private withCredentialsValue = false;
+    private mockUpload = new EventTarget() as XMLHttpRequestUpload;
+
+    get responseType(): XMLHttpRequestResponseType {
+      return this.responseTypeValue;
+    }
+    set responseType(value: XMLHttpRequestResponseType) {
+      this.responseTypeValue = value;
+      if (this.native) this.native.responseType = value;
+    }
+    get timeout(): number {
+      return this.timeoutValue;
+    }
+    set timeout(value: number) {
+      this.timeoutValue = value;
+      if (this.native) this.native.timeout = value;
+    }
+    get withCredentials(): boolean {
+      return this.withCredentialsValue;
+    }
+    set withCredentials(value: boolean) {
+      this.withCredentialsValue = value;
+      if (this.native) this.native.withCredentials = value;
+    }
+    get upload(): XMLHttpRequestUpload {
+      return this.native?.upload ?? this.mockUpload;
+    }
+
+    private emit(type: string): void {
+      const event =
+        type === 'readystatechange' ? new Event(type) : new ProgressEvent(type);
+      this.dispatchEvent(event);
+      const handler = this[`on${type}` as keyof this];
+      if (typeof handler === 'function') {
+        (handler as (event: Event) => unknown).call(this, event);
+      }
+    }
+
+    open(
+      method: string,
+      url: string | URL,
+      async = true,
+      username?: string | null,
+      password?: string | null,
+    ): void {
+      this.method = method.toUpperCase();
+      this.url = String(url);
+      this.readyState = 1;
+      this.route = routeFor(this.method, this.url) ?? null;
+      if (this.route) {
+        this.emit('readystatechange');
+        return;
+      }
+      this.native = new NativeXHR();
+      this.native.responseType = this.responseType;
+      this.native.timeout = this.timeout;
+      this.native.withCredentials = this.withCredentials;
+      this.native.open(
+        method,
+        String(url),
+        async,
+        username ?? null,
+        password ?? null,
+      );
+      this.native.addEventListener('readystatechange', () => {
+        if (!this.native) return;
+        this.readyState = this.native.readyState;
+        this.status = this.native.status;
+        this.statusText = this.native.statusText;
+        this.responseURL = this.native.responseURL;
+        this.response = this.native.response;
+        try {
+          this.responseText = this.native.responseText;
+        } catch {
+          this.responseText = '';
+        }
+        this.emit('readystatechange');
+      });
+      for (const type of [
+        'loadstart',
+        'progress',
+        'load',
+        'error',
+        'abort',
+        'timeout',
+        'loadend',
+      ]) {
+        this.native.addEventListener(type, () => this.emit(type));
+      }
+      this.emit('readystatechange');
+    }
+
+    send(body?: Document | XMLHttpRequestBodyInit | null): void {
+      const route = this.route;
+      if (!route) {
+        this.native?.send(body ?? null);
+        return;
+      }
+
+      this.emit('loadstart');
+      void mockedResponse(route).then(async (response) => {
+        this.readyState = 2;
+        this.status = response.status;
+        this.statusText = response.statusText;
+        this.responseURL = this.url;
+        this.mockedHeaders = [...response.headers]
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('\r\n');
+        this.emit('readystatechange');
+        this.responseText = await response.text();
+        if (this.responseType === 'json') {
+          try {
+            this.response = JSON.parse(this.responseText);
+          } catch {
+            this.response = null;
+          }
+        } else {
+          this.response = this.responseText;
+        }
+        this.readyState = 4;
+        this.emit('readystatechange');
+        this.emit('load');
+        this.emit('loadend');
+      });
+    }
+
+    abort(): void {
+      this.native?.abort();
+      this.emit('abort');
+    }
+    setRequestHeader(name: string, value: string): void {
+      this.native?.setRequestHeader(name, value);
+    }
+    getAllResponseHeaders(): string {
+      return this.mockedHeaders || this.native?.getAllResponseHeaders() || '';
+    }
+    getResponseHeader(name: string): string | null {
+      if (this.mockedHeaders) {
+        return name.toLowerCase() === 'content-type'
+          ? 'application/json; charset=utf-8'
+          : null;
+      }
+      return this.native?.getResponseHeader(name) ?? null;
+    }
+    overrideMimeType(mime: string): void {
+      this.native?.overrideMimeType(mime);
+    }
+  }
+
+  window.XMLHttpRequest =
+    MockXMLHttpRequest as unknown as typeof XMLHttpRequest;
 
   window.addEventListener('error', (event) => {
     post({
@@ -123,15 +388,18 @@ function previewBridge(): void {
     const reason = (event as PromiseRejectionEvent).reason;
     post({
       type: 'preview:error',
-      message: reason instanceof Error ? `${reason.name}: ${reason.message}` : describe(reason),
+      message:
+        reason instanceof Error
+          ? `${reason.name}: ${reason.message}`
+          : describe(reason),
       stack: reason instanceof Error ? reason.stack : undefined,
     });
   });
 
-  window.addEventListener('DOMContentLoaded', () => post({ type: 'preview:ready' }));
+  window.addEventListener('DOMContentLoaded', () =>
+    post({ type: 'preview:ready' }),
+  );
 }
-
-const BRIDGE_SOURCE = `(${previewBridge.toString()})();`;
 
 /** `</script` or `</style` inside embedded content would close the tag early. */
 function escapeForTag(value: string, tag: 'script' | 'style'): string {
@@ -169,6 +437,7 @@ export function buildPreviewDocument(options: PreviewOptions): string {
     : '';
 
   const fonts = fontMarkup(options.fonts ?? []);
+  const bridge = `(${previewBridge.toString()})(${JSON.stringify(options.mockApiRoutes ?? [])});`;
 
   return `<!doctype html>
 <html lang="en">
@@ -176,7 +445,7 @@ export function buildPreviewDocument(options: PreviewOptions): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(options.title ?? 'Preview')}</title>
-    <script${nonce}>${BRIDGE_SOURCE}</script>
+    <script${nonce}>${escapeForTag(bridge, 'script')}</script>
     <script type="importmap"${nonce}>${importMap(options.origin)}</script>
     ${tailwind}
     ${fonts}

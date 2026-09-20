@@ -1,9 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import type { FileMap, TreeNode } from '@mai-habi/types';
-import { EDITOR_ORIGIN, hasGitHubToken, signInWithGitHub } from '@mai-habi/shared';
-import { buildTree, importFromZip } from '@mai-habi/filesystem';
+import { useEffect, useMemo, useState } from "react";
+import type { FileMap, TreeNode } from "@mai-habi/types";
+import {
+  EDITOR_ORIGIN,
+  hasGitHubToken,
+  signInWithGitHub,
+} from "@mai-habi/shared";
+import { buildTree, importFromZip } from "@mai-habi/filesystem";
 import {
   Badge,
   Button,
@@ -20,7 +24,7 @@ import {
   Toaster,
   cn,
   toast,
-} from '@mai-habi/ui';
+} from "@mai-habi/ui";
 import {
   ArrowLeft,
   ChevronRight,
@@ -34,7 +38,7 @@ import {
   Search,
   Star,
   X,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   GitHubAuthError,
   downloadArchive,
@@ -44,12 +48,13 @@ import {
   listRepos,
   type Repo,
   type TreeEntry,
-} from '../../lib/github';
-import { FileTypeIcon } from '../../lib/file-icons';
-import { LANGUAGE_LOGOS, type LanguageLogo } from '../../lib/language-logos';
-import { importAndOpen } from '../../lib/project-actions';
-import { useSession } from '../../state/session';
-import { clientOnly } from '../../lib/client-only';
+} from "../../lib/github";
+import { FileTypeIcon } from "../../lib/file-icons";
+import { SvglLogo } from "../SvglLogo";
+import { importAndOpen } from "../../lib/project-actions";
+import { useSession } from "../../state/session";
+import { clientOnly } from "../../lib/client-only";
+import { useFullscreenBody } from "../../lib/use-fullscreen-body";
 
 /*
  * Monaco is several megabytes, and most visits to this page never open a
@@ -57,7 +62,7 @@ import { clientOnly } from '../../lib/client-only';
  * repository list as light as it was.
  */
 const CodeViewer = clientOnly(
-  () => import('../CodeViewer'),
+  () => import("../CodeViewer"),
   <div className="flex items-center gap-2 p-4 text-label font-light text-muted-foreground">
     <Spinner label="Loading the editor" /> Loading…
   </div>,
@@ -66,7 +71,12 @@ const CodeViewer = clientOnly(
 /* simple-icons artwork is CC0 1.0; the mark remains a GitHub trademark. */
 function GithubMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      className={className}
+    >
       <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
     </svg>
   );
@@ -76,10 +86,13 @@ function relative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const day = 86_400_000;
 
-  if (diff < 3_600_000) return 'just now';
+  if (diff < 3_600_000) return "just now";
   if (diff < day) return `${Math.floor(diff / 3_600_000)}h ago`;
   if (diff < 30 * day) return `${Math.floor(diff / day)}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /**
@@ -93,13 +106,12 @@ function relative(iso: string): string {
 function looksRunnable(entries: TreeEntry[]): boolean {
   return entries.some(
     (entry) =>
-      entry.type === 'blob' &&
-      (entry.path === 'index.html' ||
-        entry.path === 'package.json' ||
+      entry.type === "blob" &&
+      (entry.path === "index.html" ||
+        entry.path === "package.json" ||
         /^(src\/)?(main|index|app)\.(tsx|jsx|ts|js)$/.test(entry.path)),
   );
 }
-
 
 /**
  * A repository's primary language, shown the way file types are shown elsewhere:
@@ -110,7 +122,7 @@ function looksRunnable(entries: TreeEntry[]): boolean {
  * Classes are literals so Tailwind's scanner finds them.
  */
 interface LanguageStyle {
-  logo?: LanguageLogo;
+  logo?: string;
   /** Foreground for the mark. */
   tone: string;
   /** 10% tint behind the mark. */
@@ -126,52 +138,229 @@ const LANGUAGES: Record<string, LanguageStyle> = {
    * both read as a database, SCSS as CSS. Anything absent falls through to a
    * tinted dot and keeps its name, which is honest about not knowing it.
    */
-  typescript: { logo: 'typescript', tone: 'text-lang-typescript', wash: 'bg-lang-typescript/10', bar: 'bg-lang-typescript' },
-  javascript: { logo: 'javascript', tone: 'text-lang-javascript', wash: 'bg-lang-javascript/10', bar: 'bg-lang-javascript' },
-  html: { logo: 'html', tone: 'text-lang-html', wash: 'bg-lang-html/10', bar: 'bg-lang-html' },
-  css: { logo: 'css', tone: 'text-lang-css', wash: 'bg-lang-css/10', bar: 'bg-lang-css' },
-  scss: { logo: 'css', tone: 'text-lang-css', wash: 'bg-lang-css/10', bar: 'bg-lang-css' },
-  sass: { logo: 'css', tone: 'text-lang-css', wash: 'bg-lang-css/10', bar: 'bg-lang-css' },
-  less: { logo: 'css', tone: 'text-lang-css', wash: 'bg-lang-css/10', bar: 'bg-lang-css' },
-  stylus: { logo: 'css', tone: 'text-lang-css', wash: 'bg-lang-css/10', bar: 'bg-lang-css' },
-  json: { logo: 'json', tone: 'text-lang-json', wash: 'bg-lang-json/10', bar: 'bg-lang-json' },
-  jsonc: { logo: 'json', tone: 'text-lang-json', wash: 'bg-lang-json/10', bar: 'bg-lang-json' },
-  markdown: { logo: 'markdown', tone: 'text-lang-markdown', wash: 'bg-lang-markdown/10', bar: 'bg-lang-markdown' },
-  mdx: { logo: 'markdown', tone: 'text-lang-markdown', wash: 'bg-lang-markdown/10', bar: 'bg-lang-markdown' },
-  astro: { logo: 'astro', tone: 'text-lang-astro', wash: 'bg-lang-astro/10', bar: 'bg-lang-astro' },
-  plpgsql: { logo: 'sql', tone: 'text-lang-sql', wash: 'bg-lang-sql/10', bar: 'bg-lang-sql' },
-  sql: { logo: 'sql', tone: 'text-lang-sql', wash: 'bg-lang-sql/10', bar: 'bg-lang-sql' },
-  plsql: { logo: 'sql', tone: 'text-lang-sql', wash: 'bg-lang-sql/10', bar: 'bg-lang-sql' },
-  tsql: { logo: 'sql', tone: 'text-lang-sql', wash: 'bg-lang-sql/10', bar: 'bg-lang-sql' },
-  pgsql: { logo: 'sql', tone: 'text-lang-sql', wash: 'bg-lang-sql/10', bar: 'bg-lang-sql' },
-  python: { logo: 'python', tone: 'text-lang-python', wash: 'bg-lang-python/10', bar: 'bg-lang-python' },
-  'jupyter notebook': { logo: 'python', tone: 'text-lang-python', wash: 'bg-lang-python/10', bar: 'bg-lang-python' },
-  go: { logo: 'go', tone: 'text-lang-go', wash: 'bg-lang-go/10', bar: 'bg-lang-go' },
-  rust: { logo: 'rust', tone: 'text-lang-rust', wash: 'bg-lang-rust/10', bar: 'bg-lang-rust' },
-  java: { logo: 'java', tone: 'text-lang-java', wash: 'bg-lang-java/10', bar: 'bg-lang-java' },
-  kotlin: { logo: 'java', tone: 'text-lang-java', wash: 'bg-lang-java/10', bar: 'bg-lang-java' },
-  groovy: { logo: 'java', tone: 'text-lang-java', wash: 'bg-lang-java/10', bar: 'bg-lang-java' },
-  php: { logo: 'php', tone: 'text-lang-php', wash: 'bg-lang-php/10', bar: 'bg-lang-php' },
-  blade: { logo: 'php', tone: 'text-lang-php', wash: 'bg-lang-php/10', bar: 'bg-lang-php' },
-  ruby: { logo: 'ruby', tone: 'text-lang-ruby', wash: 'bg-lang-ruby/10', bar: 'bg-lang-ruby' },
-  shell: { logo: 'shell', tone: 'text-lang-shell', wash: 'bg-lang-shell/10', bar: 'bg-lang-shell' },
-  powershell: { logo: 'shell', tone: 'text-lang-shell', wash: 'bg-lang-shell/10', bar: 'bg-lang-shell' },
-  batchfile: { logo: 'shell', tone: 'text-lang-shell', wash: 'bg-lang-shell/10', bar: 'bg-lang-shell' },
-  makefile: { logo: 'shell', tone: 'text-lang-shell', wash: 'bg-lang-shell/10', bar: 'bg-lang-shell' },
-  vue: { logo: 'vue', tone: 'text-lang-vue', wash: 'bg-lang-vue/10', bar: 'bg-lang-vue' },
-  svelte: { logo: 'svelte', tone: 'text-lang-svelte', wash: 'bg-lang-svelte/10', bar: 'bg-lang-svelte' },
-  dockerfile: { logo: 'docker', tone: 'text-lang-docker', wash: 'bg-lang-docker/10', bar: 'bg-lang-docker' },
+  typescript: {
+    logo: "typescript",
+    tone: "text-lang-typescript",
+    wash: "bg-lang-typescript/10",
+    bar: "bg-lang-typescript",
+  },
+  javascript: {
+    logo: "javascript",
+    tone: "text-lang-javascript",
+    wash: "bg-lang-javascript/10",
+    bar: "bg-lang-javascript",
+  },
+  html: {
+    logo: "html",
+    tone: "text-lang-html",
+    wash: "bg-lang-html/10",
+    bar: "bg-lang-html",
+  },
+  css: {
+    logo: "css",
+    tone: "text-lang-css",
+    wash: "bg-lang-css/10",
+    bar: "bg-lang-css",
+  },
+  scss: {
+    logo: "css",
+    tone: "text-lang-css",
+    wash: "bg-lang-css/10",
+    bar: "bg-lang-css",
+  },
+  sass: {
+    logo: "css",
+    tone: "text-lang-css",
+    wash: "bg-lang-css/10",
+    bar: "bg-lang-css",
+  },
+  less: {
+    logo: "css",
+    tone: "text-lang-css",
+    wash: "bg-lang-css/10",
+    bar: "bg-lang-css",
+  },
+  stylus: {
+    logo: "css",
+    tone: "text-lang-css",
+    wash: "bg-lang-css/10",
+    bar: "bg-lang-css",
+  },
+  json: {
+    logo: "json",
+    tone: "text-lang-json",
+    wash: "bg-lang-json/10",
+    bar: "bg-lang-json",
+  },
+  jsonc: {
+    logo: "json",
+    tone: "text-lang-json",
+    wash: "bg-lang-json/10",
+    bar: "bg-lang-json",
+  },
+  markdown: {
+    logo: "markdown",
+    tone: "text-lang-markdown",
+    wash: "bg-lang-markdown/10",
+    bar: "bg-lang-markdown",
+  },
+  mdx: {
+    logo: "markdown",
+    tone: "text-lang-markdown",
+    wash: "bg-lang-markdown/10",
+    bar: "bg-lang-markdown",
+  },
+  astro: {
+    logo: "astro",
+    tone: "text-lang-astro",
+    wash: "bg-lang-astro/10",
+    bar: "bg-lang-astro",
+  },
+  plpgsql: {
+    logo: "sql",
+    tone: "text-lang-sql",
+    wash: "bg-lang-sql/10",
+    bar: "bg-lang-sql",
+  },
+  sql: {
+    logo: "sql",
+    tone: "text-lang-sql",
+    wash: "bg-lang-sql/10",
+    bar: "bg-lang-sql",
+  },
+  plsql: {
+    logo: "sql",
+    tone: "text-lang-sql",
+    wash: "bg-lang-sql/10",
+    bar: "bg-lang-sql",
+  },
+  tsql: {
+    logo: "sql",
+    tone: "text-lang-sql",
+    wash: "bg-lang-sql/10",
+    bar: "bg-lang-sql",
+  },
+  pgsql: {
+    logo: "sql",
+    tone: "text-lang-sql",
+    wash: "bg-lang-sql/10",
+    bar: "bg-lang-sql",
+  },
+  python: {
+    logo: "python",
+    tone: "text-lang-python",
+    wash: "bg-lang-python/10",
+    bar: "bg-lang-python",
+  },
+  "jupyter notebook": {
+    logo: "python",
+    tone: "text-lang-python",
+    wash: "bg-lang-python/10",
+    bar: "bg-lang-python",
+  },
+  go: {
+    logo: "go",
+    tone: "text-lang-go",
+    wash: "bg-lang-go/10",
+    bar: "bg-lang-go",
+  },
+  rust: {
+    logo: "rust",
+    tone: "text-lang-rust",
+    wash: "bg-lang-rust/10",
+    bar: "bg-lang-rust",
+  },
+  java: {
+    logo: "java",
+    tone: "text-lang-java",
+    wash: "bg-lang-java/10",
+    bar: "bg-lang-java",
+  },
+  kotlin: {
+    logo: "java",
+    tone: "text-lang-java",
+    wash: "bg-lang-java/10",
+    bar: "bg-lang-java",
+  },
+  groovy: {
+    logo: "java",
+    tone: "text-lang-java",
+    wash: "bg-lang-java/10",
+    bar: "bg-lang-java",
+  },
+  php: {
+    logo: "php",
+    tone: "text-lang-php",
+    wash: "bg-lang-php/10",
+    bar: "bg-lang-php",
+  },
+  blade: {
+    logo: "php",
+    tone: "text-lang-php",
+    wash: "bg-lang-php/10",
+    bar: "bg-lang-php",
+  },
+  ruby: {
+    logo: "ruby",
+    tone: "text-lang-ruby",
+    wash: "bg-lang-ruby/10",
+    bar: "bg-lang-ruby",
+  },
+  shell: {
+    logo: "shell",
+    tone: "text-lang-shell",
+    wash: "bg-lang-shell/10",
+    bar: "bg-lang-shell",
+  },
+  powershell: {
+    logo: "shell",
+    tone: "text-lang-shell",
+    wash: "bg-lang-shell/10",
+    bar: "bg-lang-shell",
+  },
+  batchfile: {
+    logo: "shell",
+    tone: "text-lang-shell",
+    wash: "bg-lang-shell/10",
+    bar: "bg-lang-shell",
+  },
+  makefile: {
+    logo: "shell",
+    tone: "text-lang-shell",
+    wash: "bg-lang-shell/10",
+    bar: "bg-lang-shell",
+  },
+  vue: {
+    logo: "vue",
+    tone: "text-lang-vue",
+    wash: "bg-lang-vue/10",
+    bar: "bg-lang-vue",
+  },
+  svelte: {
+    logo: "svelte",
+    tone: "text-lang-svelte",
+    wash: "bg-lang-svelte/10",
+    bar: "bg-lang-svelte",
+  },
+  dockerfile: {
+    logo: "docker",
+    tone: "text-lang-docker",
+    wash: "bg-lang-docker/10",
+    bar: "bg-lang-docker",
+  },
 };
 
 const UNKNOWN_LANGUAGE: LanguageStyle = {
-  tone: 'text-muted-foreground',
-  wash: 'bg-surface-active',
-  bar: 'bg-border-strong',
+  tone: "text-muted-foreground",
+  wash: "bg-surface-active",
+  bar: "bg-border-strong",
 };
 
 function languageStyle(language: string | null): LanguageStyle {
   if (!language) return UNKNOWN_LANGUAGE;
-  return LANGUAGES[language.toLowerCase()] ?? UNKNOWN_LANGUAGE;
+  return (
+    LANGUAGES[language.toLowerCase()] ?? { ...UNKNOWN_LANGUAGE, logo: language }
+  );
 }
 
 function LanguageMark({ language }: { language: string | null }) {
@@ -179,15 +368,20 @@ function LanguageMark({ language }: { language: string | null }) {
 
   return (
     <span
-      className={cn('grid size-9 shrink-0 place-items-center rounded-lg', style.wash)}
+      className={cn(
+        "grid size-9 shrink-0 place-items-center rounded-lg",
+        style.wash,
+      )}
       aria-hidden="true"
     >
       {style.logo ? (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={cn('size-4', style.tone)}>
-          <path d={LANGUAGE_LOGOS[style.logo]} />
-        </svg>
+        <SvglLogo
+          name={style.logo}
+          className="size-4"
+          fallbackClassName={style.tone}
+        />
       ) : (
-        <Code2 className={cn('size-4', style.tone)} />
+        <Code2 className={cn("size-4", style.tone)} />
       )}
     </span>
   );
@@ -199,22 +393,21 @@ function repoSize(kilobytes: number): string {
   return `${(kilobytes / 1024).toFixed(kilobytes < 10240 ? 1 : 0)} MB`;
 }
 
-type Scope = 'all' | 'sources' | 'forks' | 'private';
-type Order = 'updated' | 'name' | 'stars';
+type Scope = "all" | "sources" | "forks" | "private";
+type Order = "updated" | "name" | "stars";
 
 const SCOPES: { value: Scope; label: string }[] = [
-  { value: 'all', label: 'All repositories' },
-  { value: 'sources', label: 'Sources only' },
-  { value: 'forks', label: 'Forks only' },
-  { value: 'private', label: 'Private only' },
+  { value: "all", label: "All repositories" },
+  { value: "sources", label: "Sources only" },
+  { value: "forks", label: "Forks only" },
+  { value: "private", label: "Private only" },
 ];
 
 const ORDERS: { value: Order; label: string }[] = [
-  { value: 'updated', label: 'Recently updated' },
-  { value: 'name', label: 'Name' },
-  { value: 'stars', label: 'Stars' },
+  { value: "updated", label: "Recently updated" },
+  { value: "name", label: "Name" },
+  { value: "stars", label: "Stars" },
 ];
-
 
 /**
  * The language split, the way GitHub reports it: bytes written per language.
@@ -235,7 +428,11 @@ function sharesOf(languages: Record<string, number>): LanguageShare[] {
   if (total === 0) return [];
 
   const all = Object.entries(languages)
-    .map(([name, bytes]) => ({ name, share: (bytes / total) * 100, style: languageStyle(name) }))
+    .map(([name, bytes]) => ({
+      name,
+      share: (bytes / total) * 100,
+      style: languageStyle(name),
+    }))
     .sort((a, b) => b.share - a.share);
 
   const shown = all.filter((entry) => entry.share >= 1);
@@ -243,7 +440,7 @@ function sharesOf(languages: Record<string, number>): LanguageShare[] {
 
   if (rest.length > 0) {
     shown.push({
-      name: 'Other',
+      name: "Other",
       share: rest.reduce((sum, entry) => sum + entry.share, 0),
       style: UNKNOWN_LANGUAGE,
     });
@@ -252,7 +449,11 @@ function sharesOf(languages: Record<string, number>): LanguageShare[] {
   return shown;
 }
 
-function LanguageBreakdown({ languages }: { languages: Record<string, number> }) {
+function LanguageBreakdown({
+  languages,
+}: {
+  languages: Record<string, number>;
+}) {
   const shares = sharesOf(languages);
   if (shares.length === 0) return null;
 
@@ -267,7 +468,7 @@ function LanguageBreakdown({ languages }: { languages: Record<string, number> })
           <span
             key={entry.name}
             className={entry.style.bar}
-            style={{ width: entry.share + '%' }}
+            style={{ width: entry.share + "%" }}
           />
         ))}
       </div>
@@ -279,18 +480,15 @@ function LanguageBreakdown({ languages }: { languages: Record<string, number> })
             className="flex items-center gap-1.5 text-micro font-light text-muted-foreground"
           >
             {entry.style.logo ? (
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-                className={cn('size-3 shrink-0', entry.style.tone)}
-              >
-                <path d={LANGUAGE_LOGOS[entry.style.logo]} />
-              </svg>
+              <SvglLogo
+                name={entry.style.logo}
+                className="size-3"
+                fallbackClassName={entry.style.tone}
+              />
             ) : (
               <span
                 aria-hidden="true"
-                className={cn('size-2 shrink-0 rounded-full', entry.style.bar)}
+                className={cn("size-2 shrink-0 rounded-full", entry.style.bar)}
               />
             )}
             <span className="text-foreground">{entry.name}</span>
@@ -311,12 +509,13 @@ function LanguageBreakdown({ languages }: { languages: Record<string, number> })
  */
 function looksLikeWorkspace(entries: TreeEntry[]): boolean {
   const manifests = entries.filter(
-    (entry) => entry.type === 'blob' && /^(packages|apps)\/[^/]+\/package\.json$/.test(entry.path),
+    (entry) =>
+      entry.type === "blob" &&
+      /^(packages|apps)\/[^/]+\/package\.json$/.test(entry.path),
   );
 
   return manifests.length > 1;
 }
-
 
 /**
  * What a repository is built with, as opposed to what it is written in.
@@ -331,7 +530,7 @@ function looksLikeWorkspace(entries: TreeEntry[]): boolean {
  */
 interface Framework {
   label: string;
-  logo?: LanguageLogo;
+  logo?: string;
   /** Root-level files that identify it. */
   files: RegExp;
   /** A second chance for frameworks whose config file is optional. */
@@ -340,21 +539,33 @@ interface Framework {
 
 const FRAMEWORKS: Framework[] = [
   {
-    label: 'Next.js',
-    logo: 'next',
+    label: "Next.js",
+    logo: "next",
     files: /^next\.config\.(js|mjs|cjs|ts|mts)$/,
     // The config is optional; an App Router or Pages Router entry is not.
-    paths: /(^|\/)(src\/)?(app\/page\.(tsx|jsx|ts|js)|pages\/(_app|index)\.(tsx|jsx|ts|js))$/,
+    paths:
+      /(^|\/)(src\/)?(app\/page\.(tsx|jsx|ts|js)|pages\/(_app|index)\.(tsx|jsx|ts|js))$/,
   },
-  { label: 'Astro', logo: 'astro', files: /^astro\.config\.(js|mjs|cjs|ts|mts)$/ },
-  { label: 'Nuxt', logo: 'vue', files: /^nuxt\.config\.(js|mjs|ts)$/ },
-  { label: 'SvelteKit', logo: 'svelte', files: /^svelte\.config\.(js|mjs|ts)$/ },
-  { label: 'Vue', logo: 'vue', files: /^vue\.config\.(js|mjs|ts)$/ },
-  { label: 'Tailwind CSS', logo: 'tailwind', files: /^tailwind\.config\.(js|cjs|mjs|ts)$/ },
-  { label: 'Remix', logo: 'react', files: /^remix\.config\.(js|mjs|ts)$/ },
-  // No mark of their own in the icon set, so they take the neutral glyph.
-  { label: 'Vite', files: /^vite\.config\.(js|mjs|cjs|ts|mts)$/ },
-  { label: 'Angular', files: /^angular\.json$/ },
+  {
+    label: "Astro",
+    logo: "astro",
+    files: /^astro\.config\.(js|mjs|cjs|ts|mts)$/,
+  },
+  { label: "Nuxt", logo: "Nuxt", files: /^nuxt\.config\.(js|mjs|ts)$/ },
+  {
+    label: "SvelteKit",
+    logo: "svelte",
+    files: /^svelte\.config\.(js|mjs|ts)$/,
+  },
+  { label: "Vue", logo: "vue", files: /^vue\.config\.(js|mjs|ts)$/ },
+  {
+    label: "Tailwind CSS",
+    logo: "tailwind",
+    files: /^tailwind\.config\.(js|cjs|mjs|ts)$/,
+  },
+  { label: "Remix", logo: "Remix", files: /^remix\.config\.(js|mjs|ts)$/ },
+  { label: "Vite", logo: "Vite", files: /^vite\.config\.(js|mjs|cjs|ts|mts)$/ },
+  { label: "Angular", logo: "Angular", files: /^angular\.json$/ },
 ];
 
 /**
@@ -370,9 +581,12 @@ function frameworkScopes(paths: string[]): string[] {
   const out: string[] = [];
 
   for (const path of paths) {
-    const segments = path.split('/');
+    const segments = path.split("/");
     if (segments.length === 1) out.push(segments[0]);
-    else if (segments.length === 3 && (segments[0] === 'apps' || segments[0] === 'packages')) {
+    else if (
+      segments.length === 3 &&
+      (segments[0] === "apps" || segments[0] === "packages")
+    ) {
       out.push(segments[2]);
     }
   }
@@ -381,12 +595,16 @@ function frameworkScopes(paths: string[]): string[] {
 }
 
 function detectFrameworks(entries: TreeEntry[]): Framework[] {
-  const paths = entries.filter((entry) => entry.type === 'blob').map((entry) => entry.path);
+  const paths = entries
+    .filter((entry) => entry.type === "blob")
+    .map((entry) => entry.path);
   const configs = frameworkScopes(paths);
 
   return FRAMEWORKS.filter((framework) => {
     if (configs.some((name) => framework.files.test(name))) return true;
-    return framework.paths ? paths.some((path) => framework.paths!.test(path)) : false;
+    return framework.paths
+      ? paths.some((path) => framework.paths!.test(path))
+      : false;
   });
 }
 
@@ -406,14 +624,7 @@ function FrameworkChips({ frameworks }: { frameworks: Framework[] }) {
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-micro font-light text-foreground"
         >
           {framework.logo ? (
-            <svg
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-              className="size-3 shrink-0"
-            >
-              <path d={LANGUAGE_LOGOS[framework.logo]} />
-            </svg>
+            <SvglLogo name={framework.logo} className="size-3" />
           ) : (
             <Code2 className="size-3 shrink-0" aria-hidden="true" />
           )}
@@ -425,6 +636,8 @@ function FrameworkChips({ frameworks }: { frameworks: Framework[] }) {
 }
 
 export default function GitHubBrowser() {
+  useFullscreenBody();
+
   const { cloudEnabled, user, ready, initialise } = useSession();
   const [selected, setSelected] = useState<Repo | null>(null);
 
@@ -433,10 +646,11 @@ export default function GitHubBrowser() {
   }, [initialise]);
 
   const connect = () =>
-    void signInWithGitHub(`${EDITOR_ORIGIN}/auth/callback`).catch((cause: unknown) =>
-      toast.error('Could not start sign-in', {
-        description: cause instanceof Error ? cause.message : String(cause),
-      }),
+    void signInWithGitHub(`${EDITOR_ORIGIN}/auth/callback`).catch(
+      (cause: unknown) =>
+        toast.error("Could not start sign-in", {
+          description: cause instanceof Error ? cause.message : String(cause),
+        }),
     );
 
   if (!cloudEnabled) {
@@ -447,7 +661,7 @@ export default function GitHubBrowser() {
           description="This deployment has no Supabase credentials, so accounts and repositories are unavailable. Projects still work and stay in this browser."
           action={
             <Button variant="outline" asChild>
-              <a href="/">Back to projects</a>
+              <a href="/projects">Back to projects</a>
             </Button>
           }
         />
@@ -521,12 +735,18 @@ export default function GitHubBrowser() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <section className="pt-14">
-      <p className="text-micro font-normal uppercase tracking-[0.12em] text-muted-foreground">
-        Connected to GitHub
-      </p>
-      <h1 className="mt-3 text-page font-light">Repositories</h1>
-      {children}
+    <section className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-border bg-surface-secondary px-4 py-3 sm:px-6">
+        <p className="text-micro font-normal uppercase tracking-[0.12em] text-muted-foreground">
+          Connected to GitHub
+        </p>
+        <h1 className="mt-1 text-section font-light text-foreground">
+          Repositories
+        </h1>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-6">
+        {children}
+      </div>
     </section>
   );
 }
@@ -536,9 +756,9 @@ function Shell({ children }: { children: React.ReactNode }) {
 function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
   const [repos, setRepos] = useState<Repo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [scope, setScope] = useState<Scope>('all');
-  const [order, setOrder] = useState<Order>('updated');
+  const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<Scope>("all");
+  const [order, setOrder] = useState<Order>("updated");
 
   useEffect(() => {
     let cancelled = false;
@@ -547,7 +767,11 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
       .then((list) => !cancelled && setRepos(list))
       .catch((cause: unknown) => {
         if (cancelled) return;
-        setError(cause instanceof Error ? cause.message : 'Could not load your repositories.');
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not load your repositories.",
+        );
         setRepos([]);
       });
 
@@ -561,22 +785,22 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
     const needle = query.trim().toLowerCase();
 
     const matched = repos.filter((repo) => {
-      if (scope === 'sources' && repo.fork) return false;
-      if (scope === 'forks' && !repo.fork) return false;
-      if (scope === 'private' && !repo.private) return false;
+      if (scope === "sources" && repo.fork) return false;
+      if (scope === "forks" && !repo.fork) return false;
+      if (scope === "private" && !repo.private) return false;
 
       if (!needle) return true;
       return (
         repo.fullName.toLowerCase().includes(needle) ||
-        (repo.description ?? '').toLowerCase().includes(needle) ||
-        (repo.language ?? '').toLowerCase().includes(needle)
+        (repo.description ?? "").toLowerCase().includes(needle) ||
+        (repo.language ?? "").toLowerCase().includes(needle)
       );
     });
 
     // Sorted on a copy, so the loaded list stays the unfiltered source of truth.
     return [...matched].sort((a, b) => {
-      if (order === 'name') return a.fullName.localeCompare(b.fullName);
-      if (order === 'stars') return b.stars - a.stars;
+      if (order === "name") return a.fullName.localeCompare(b.fullName);
+      if (order === "stars") return b.stars - a.stars;
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
   }, [repos, query, scope, order]);
@@ -587,7 +811,10 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
         <Skeleton className="h-9 w-full" />
         <div className="mt-4 space-y-px overflow-hidden rounded-lg border border-border">
           {[0, 1, 2, 3, 4].map((row) => (
-            <div key={row} className="flex items-center gap-4 bg-surface px-4 py-3.5">
+            <div
+              key={row}
+              className="flex items-center gap-4 bg-surface px-4 py-3.5"
+            >
               <Skeleton className="size-9 shrink-0 rounded-lg" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-3.5 w-48" />
@@ -600,7 +827,7 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
     );
   }
 
-  const filtering = query.trim().length > 0 || scope !== 'all';
+  const filtering = query.trim().length > 0 || scope !== "all";
 
   return (
     <div className="mt-8">
@@ -629,7 +856,7 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
           {query && (
             <button
               type="button"
-              onClick={() => setQuery('')}
+              onClick={() => setQuery("")}
               aria-label="Clear filter"
               className="absolute right-2 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-sm text-muted-foreground outline-none transition-colors duration-[--duration-fast] hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >
@@ -639,8 +866,14 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
         </div>
 
         <div className="flex gap-2">
-          <Select value={scope} onValueChange={(value) => setScope(value as Scope)}>
-            <SelectTrigger aria-label="Which repositories" className="w-full sm:w-44">
+          <Select
+            value={scope}
+            onValueChange={(value) => setScope(value as Scope)}
+          >
+            <SelectTrigger
+              aria-label="Which repositories"
+              className="w-full sm:w-44"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -652,7 +885,10 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
             </SelectContent>
           </Select>
 
-          <Select value={order} onValueChange={(value) => setOrder(value as Order)}>
+          <Select
+            value={order}
+            onValueChange={(value) => setOrder(value as Order)}
+          >
             <SelectTrigger aria-label="Sort order" className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
@@ -668,28 +904,36 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
       </div>
 
       {/* Live, so filtering announces its result rather than changing silently. */}
-      <p className="mt-3 text-micro font-light text-muted-foreground" aria-live="polite">
+      <p
+        className="mt-3 text-micro font-light text-muted-foreground"
+        aria-live="polite"
+      >
         {filtering
-          ? shown.length + ' of ' + repos.length + ' repositories'
-          : repos.length + (repos.length === 1 ? ' repository' : ' repositories')}
+          ? shown.length + " of " + repos.length + " repositories"
+          : repos.length +
+            (repos.length === 1 ? " repository" : " repositories")}
       </p>
 
       {shown.length === 0 ? (
         <div className="mt-2 rounded-lg border border-dashed border-border-strong bg-surface">
           <EmptyState
-            title={filtering ? 'Nothing matches those filters' : 'No repositories found'}
+            title={
+              filtering
+                ? "Nothing matches those filters"
+                : "No repositories found"
+            }
             description={
               filtering
-                ? 'Try a different term, or widen the filter.'
-                : 'This account has no repositories the connection can reach.'
+                ? "Try a different term, or widen the filter."
+                : "This account has no repositories the connection can reach."
             }
             action={
               filtering ? (
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setQuery('');
-                    setScope('all');
+                    setQuery("");
+                    setScope("all");
                   }}
                 >
                   Clear filters
@@ -721,7 +965,10 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
                       />
                     )}
                     {repo.fork && (
-                      <GitFork className="size-3 shrink-0 text-muted-foreground" aria-label="Fork" />
+                      <GitFork
+                        className="size-3 shrink-0 text-muted-foreground"
+                        aria-label="Fork"
+                      />
                     )}
                   </div>
 
@@ -758,7 +1005,9 @@ function RepoList({ onOpen }: { onOpen: (repo: Repo) => void }) {
 
 function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
   const [entries, setEntries] = useState<TreeEntry[] | null>(null);
-  const [languages, setLanguages] = useState<Record<string, number> | null>(null);
+  const [languages, setLanguages] = useState<Record<string, number> | null>(
+    null,
+  );
   const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -780,7 +1029,11 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
       })
       .catch((cause: unknown) => {
         if (cancelled) return;
-        setError(cause instanceof Error ? cause.message : 'Could not read that repository.');
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Could not read that repository.",
+        );
         setEntries([]);
       });
 
@@ -794,7 +1047,10 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
     };
   }, [repo]);
 
-  const files = useMemo(() => (entries ?? []).filter((entry) => entry.type === 'blob'), [entries]);
+  const files = useMemo(
+    () => (entries ?? []).filter((entry) => entry.type === "blob"),
+    [entries],
+  );
 
   /*
    * GitHub returns a flat list of paths. `buildTree` is the same function the
@@ -806,9 +1062,15 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
     const map: FileMap = {};
     for (const entry of entries ?? []) {
       map[entry.path] =
-        entry.type === 'tree'
-          ? { path: entry.path, type: 'directory' }
-          : { path: entry.path, type: 'file', content: '', encoding: 'utf8', size: entry.size };
+        entry.type === "tree"
+          ? { path: entry.path, type: "directory" }
+          : {
+              path: entry.path,
+              type: "file",
+              content: "",
+              encoding: "utf8",
+              size: entry.size,
+            };
     }
     return buildTree(map);
   }, [entries]);
@@ -825,11 +1087,14 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
 
     getFileText(repo.owner, repo.name, filePath, repo.defaultBranch)
       .then((result) => {
-        if ('binary' in result) setContentNote('This file is binary and cannot be previewed.');
+        if ("binary" in result)
+          setContentNote("This file is binary and cannot be previewed.");
         else setContent(result.text);
       })
       .catch((cause: unknown) =>
-        setContentNote(cause instanceof Error ? cause.message : 'Could not read that file.'),
+        setContentNote(
+          cause instanceof Error ? cause.message : "Could not read that file.",
+        ),
       )
       .finally(() => setLoadingFile(false));
   };
@@ -855,20 +1120,25 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
         setOpening(false);
         const message =
           cause instanceof GitHubAuthError
-            ? 'Your GitHub connection expired. Sign in again to reconnect.'
+            ? "Your GitHub connection expired. Sign in again to reconnect."
             : cause instanceof Error
               ? cause.message
-              : 'Could not open that repository.';
-        toast.error('Could not open in the playground', { description: message });
+              : "Could not open that repository.";
+        toast.error("Could not open in the playground", {
+          description: message,
+        });
       });
   };
 
   const runnable = entries !== null && looksRunnable(entries);
   const workspace = entries !== null && looksLikeWorkspace(entries);
-  const frameworks = useMemo(() => (entries ? detectFrameworks(entries) : []), [entries]);
+  const frameworks = useMemo(
+    () => (entries ? detectFrameworks(entries) : []),
+    [entries],
+  );
 
   return (
-    <div className="mt-8">
+    <div className="flex min-h-full flex-col pt-6">
       <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
         <ArrowLeft /> All repositories
       </Button>
@@ -876,7 +1146,9 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="truncate text-section font-light text-foreground">{repo.fullName}</h2>
+            <h2 className="truncate text-section font-light text-foreground">
+              {repo.fullName}
+            </h2>
             {repo.private && <Badge tone="neutral">Private</Badge>}
           </div>
           {repo.description && (
@@ -895,7 +1167,11 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
               <ExternalLink /> GitHub
             </a>
           </Button>
-          <Button variant="default" loading={opening} onClick={openInPlayground}>
+          <Button
+            variant="default"
+            loading={opening}
+            onClick={openInPlayground}
+          >
             <Play /> Open in playground
           </Button>
         </div>
@@ -907,25 +1183,27 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
 
       {workspace && (
         <p className="mt-4 rounded-lg border border-border bg-surface-secondary px-3.5 py-3 text-label font-light text-muted-foreground">
-          This looks like a monorepo — several packages with their own{' '}
-          <code className="text-code">package.json</code>. The whole tree imports, but the
-          playground compiles one app from a single entry file and installs nothing, so pick the
-          package you want after opening it.
+          This looks like a monorepo — several packages with their own{" "}
+          <code className="text-code">package.json</code>. The whole tree
+          imports, but the playground compiles one app from a single entry file
+          and installs nothing, so pick the package you want after opening it.
         </p>
       )}
 
       {entries !== null && !runnable && (
         <p className="mt-4 rounded-lg border border-border bg-surface-secondary px-3.5 py-3 text-label font-light text-muted-foreground">
-          No <code className="text-code">index.html</code> or{' '}
-          <code className="text-code">package.json</code> at the root, so this one probably will not
-          run in the browser compiler. You can still open it to read and edit the files.
+          No <code className="text-code">index.html</code> or{" "}
+          <code className="text-code">package.json</code> at the root, so this
+          one probably will not run in the browser compiler. You can still open
+          it to read and edit the files.
         </p>
       )}
 
       {truncated && (
         <p className="mt-4 rounded-lg border border-border bg-surface-secondary px-3.5 py-3 text-label font-light text-muted-foreground">
-          GitHub truncated this file listing because the repository is very large. Opening it in the
-          playground still fetches the whole archive, subject to the import limits.
+          GitHub truncated this file listing because the repository is very
+          large. Opening it in the playground still fetches the whole archive,
+          subject to the import limits.
         </p>
       )}
 
@@ -938,20 +1216,24 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
         />
       )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="mt-6 grid min-h-[40rem] flex-1 grid-rows-[minmax(16rem,auto)_minmax(24rem,1fr)] gap-4 lg:min-h-[28rem] lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:grid-rows-1">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface">
           <p className="border-b border-border px-3 py-2 text-micro font-normal uppercase tracking-[0.08em] text-muted-foreground">
-            {entries === null ? 'Files' : `${files.length} files`}
+            {entries === null ? "Files" : `${files.length} files`}
           </p>
 
           {entries === null ? (
-            <div className="space-y-2 p-3" aria-busy="true" aria-label="Loading files">
+            <div
+              className="space-y-2 p-3"
+              aria-busy="true"
+              aria-label="Loading files"
+            >
               {[0, 1, 2, 3, 4].map((row) => (
                 <Skeleton key={row} className="h-4 w-full" />
               ))}
             </div>
           ) : (
-            <div className="max-h-[28rem] overflow-y-auto p-1">
+            <div className="min-h-0 flex-1 overflow-y-auto p-1">
               <FileTree
                 nodes={tree}
                 depth={0}
@@ -964,24 +1246,32 @@ function RepoDetail({ repo, onBack }: { repo: Repo; onBack: () => void }) {
           )}
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface">
           <p className="truncate border-b border-border px-3 py-2 text-micro font-normal text-muted-foreground">
-            {path ?? 'Select a file to preview'}
+            {path ?? "Select a file to preview"}
           </p>
 
-          {loadingFile ? (
-            <div className="flex items-center gap-2 p-4 text-label font-light text-muted-foreground">
-              <Spinner label="Loading file" /> Loading…
-            </div>
-          ) : contentNote ? (
-            <p className="p-4 text-label font-light text-muted-foreground">{contentNote}</p>
-          ) : content === null ? (
-            <p className="p-4 text-label font-light text-muted-foreground">
-              Pick a file on the left to read it here.
-            </p>
-          ) : (
-            <CodeViewer path={path ?? 'file.txt'} value={content} className="h-[28rem]" />
-          )}
+          <div className="min-h-0 flex-1">
+            {loadingFile ? (
+              <div className="flex items-center gap-2 p-4 text-label font-light text-muted-foreground">
+                <Spinner label="Loading file" /> Loading…
+              </div>
+            ) : contentNote ? (
+              <p className="p-4 text-label font-light text-muted-foreground">
+                {contentNote}
+              </p>
+            ) : content === null ? (
+              <p className="p-4 text-label font-light text-muted-foreground">
+                Pick a file on the left to read it here.
+              </p>
+            ) : (
+              <CodeViewer
+                path={path ?? "file.txt"}
+                value={content}
+                className="h-full"
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1006,7 +1296,14 @@ interface FileTreeProps {
  * uses, and indentation comes from padding rather than nested margins so a long
  * path still truncates against the panel edge instead of overflowing it.
  */
-function FileTree({ nodes, depth, expanded, onToggle, selected, onSelect }: FileTreeProps) {
+function FileTree({
+  nodes,
+  depth,
+  expanded,
+  onToggle,
+  selected,
+  onSelect,
+}: FileTreeProps) {
   return (
     /*
      * Plain nested lists rather than the ARIA tree pattern. `role="tree"`
@@ -1017,24 +1314,28 @@ function FileTree({ nodes, depth, expanded, onToggle, selected, onSelect }: File
     <ul>
       {nodes.map((node) => {
         const open = expanded[node.path] ?? false;
-        const isDirectory = node.type === 'directory';
+        const isDirectory = node.type === "directory";
 
         return (
           <li key={node.path}>
             <button
               type="button"
               aria-expanded={isDirectory ? open : undefined}
-              aria-current={!isDirectory && node.path === selected ? true : undefined}
-              onClick={() => (isDirectory ? onToggle(node.path) : onSelect(node.path))}
+              aria-current={
+                !isDirectory && node.path === selected ? true : undefined
+              }
+              onClick={() =>
+                isDirectory ? onToggle(node.path) : onSelect(node.path)
+              }
               /* Indentation scales with depth; the base keeps the first level off the edge. */
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
               className={cn(
-                'flex w-full items-center gap-1.5 rounded-sm py-1.5 pr-2 text-left text-label font-light',
-                'outline-none transition-colors duration-[--duration-fast]',
-                'hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
+                "flex w-full items-center gap-1.5 rounded-sm py-1.5 pr-2 text-left text-label font-light",
+                "outline-none transition-colors duration-[--duration-fast]",
+                "hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
                 !isDirectory && node.path === selected
-                  ? 'bg-surface-active text-foreground'
-                  : 'text-muted-foreground',
+                  ? "bg-surface-active text-foreground"
+                  : "text-muted-foreground",
               )}
             >
               {isDirectory ? (
@@ -1042,12 +1343,15 @@ function FileTree({ nodes, depth, expanded, onToggle, selected, onSelect }: File
                   <ChevronRight
                     aria-hidden="true"
                     className={cn(
-                      'size-3 shrink-0 transition-transform duration-[--duration-fast]',
-                      open && 'rotate-90',
+                      "size-3 shrink-0 transition-transform duration-[--duration-fast]",
+                      open && "rotate-90",
                     )}
                   />
                   {open ? (
-                    <FolderOpen className="size-3.5 shrink-0" aria-hidden="true" />
+                    <FolderOpen
+                      className="size-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <Folder className="size-3.5 shrink-0" aria-hidden="true" />
                   )}
@@ -1064,16 +1368,19 @@ function FileTree({ nodes, depth, expanded, onToggle, selected, onSelect }: File
               </span>
             </button>
 
-            {isDirectory && open && node.children && node.children.length > 0 && (
-              <FileTree
-                nodes={node.children}
-                depth={depth + 1}
-                expanded={expanded}
-                onToggle={onToggle}
-                selected={selected}
-                onSelect={onSelect}
-              />
-            )}
+            {isDirectory &&
+              open &&
+              node.children &&
+              node.children.length > 0 && (
+                <FileTree
+                  nodes={node.children}
+                  depth={depth + 1}
+                  expanded={expanded}
+                  onToggle={onToggle}
+                  selected={selected}
+                  onSelect={onSelect}
+                />
+              )}
           </li>
         );
       })}

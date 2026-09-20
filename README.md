@@ -65,7 +65,6 @@ npm run build        # builds all three apps
 npm run typecheck    # astro check
 npm run verify       # compiler, filesystem, preview, contrast and design audit
 npm run sync:runtime # re-stage React / esbuild.wasm / Tailwind after upgrades
-npm run sync:icons   # regenerate the language logos from simple-icons
 ```
 
 > `astro preview` is not supported with the Vercel adapter. Use `npm run dev`.
@@ -112,20 +111,16 @@ chunk), Tailwind's browser build, and React's `.d.ts` files for Monaco.
 
 ## File-type icons
 
-The explorer shows each language's real mark — the React atom, the TypeScript
-and JavaScript squares, the CSS and HTML5 shields, the JSON and Markdown logos.
+The explorer, project dashboard and GitHub browser resolve language and
+framework marks from the [SVGL API](https://svgl.app/docs/api). The app combines
+SVGL's `Framework` and `Language` categories behind `/api/svgl`, caches the
+result for 24 hours, and serves stale data while the catalog refreshes. This
+keeps upstream requests low and means new catalog entries do not require a code
+change.
 
-simple-icons ships those as raw SVGs alongside a five-megabyte JavaScript index,
-so [`scripts/sync-icons.mjs`](scripts/sync-icons.mjs) extracts only the seven
-paths in use into a generated module. That file is committed, so the app builds
-without simple-icons installed; the package is a devDependency used purely to
-regenerate it.
-
-Colour comes from `--lang-*` tokens rather than the official brand palette.
-JavaScript yellow reads at about 1.2:1 on white and React cyan at 1.4:1 — both
-invisible — so light mode keeps the brand hue and darkens it, while dark mode
-uses the real values where they work. Every one clears 3:1 against the surfaces
-it sits on, in both themes, and `npm run verify` computes that.
+Theme-aware marks use SVGL's light or dark route to match the active appearance.
+If the catalog or an individual asset is unavailable, the UI keeps the label
+and displays a neutral code glyph instead.
 
 ## Images and assets
 

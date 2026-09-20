@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Share, Visibility } from '@mai-habi/types';
 import { GUEST_SHARE_EXPIRY_OPTIONS, isCloudEnabled } from '@mai-habi/shared';
 import {
@@ -36,6 +36,34 @@ export function ShareDialog() {
   const [share, setShare] = useState<Share | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [qr, setQr] = useState<string | null>(null);
+
+  // Generate a QR for the viewer link. qrcode is imported lazily so it only
+  // loads once a link exists.
+  useEffect(() => {
+    if (!share?.url) {
+      setQr(null);
+      return;
+    }
+    let cancelled = false;
+    void import('qrcode')
+      .then(({ default: QRCode }) =>
+        QRCode.toString(share.url, {
+          type: 'svg',
+          margin: 1,
+          color: { dark: '#171717', light: '#ffffff' },
+        }),
+      )
+      .then((svg) => {
+        if (!cancelled) setQr(svg);
+      })
+      .catch(() => {
+        if (!cancelled) setQr(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [share?.url]);
 
   const close = (next: boolean) => {
     if (busy) return;
@@ -109,6 +137,21 @@ export function ShareDialog() {
                   ? `Expires ${new Date(share.expiresAt).toLocaleDateString()}.`
                   : 'This link does not expire.'}
             </p>
+
+            {qr && (
+              <div className="flex items-center gap-4 rounded-lg border border-border bg-surface-secondary/50 p-3">
+                <div
+                  className="size-24 shrink-0 rounded-md bg-white p-1.5 [&>svg]:h-full [&>svg]:w-full"
+                  dangerouslySetInnerHTML={{ __html: qr }}
+                />
+                <div className="min-w-0">
+                  <p className="text-secondary font-normal text-foreground">Scan to open</p>
+                  <p className="mt-1 text-label font-light text-muted-foreground">
+                    Point a phone camera at the code to open the viewer there — no typing the link.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <Button variant="ghost" onClick={() => setShare(null)}>
               Create another link

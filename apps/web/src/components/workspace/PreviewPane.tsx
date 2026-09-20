@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { FontConfig } from '@mai-habi/types';
+import type { FontConfig, MockApiRoute } from '@mai-habi/types';
 import {
   PREVIEW_SANDBOX,
   buildPlaceholderDocument,
@@ -12,6 +12,7 @@ import { cspNonce } from '../../lib/csp-nonce';
 
 /** Stable empty reference so the selector never churns re-renders. */
 const NO_FONTS: FontConfig[] = [];
+const NO_MOCK_ROUTES: MockApiRoute[] = [];
 
 /**
  * Hosts the compiled application.
@@ -26,14 +27,22 @@ export function PreviewPane({ visible }: { visible: boolean }) {
 
   const preview = useWorkspace((state) => state.preview);
   const compileState = useWorkspace((state) => state.compileState);
-  const tailwind = useWorkspace((state) => state.project?.settings.tailwind ?? false);
-  const fonts = useWorkspace((state) => state.project?.settings.fonts) ?? NO_FONTS;
+  const tailwind = useWorkspace(
+    (state) => state.project?.settings.tailwind ?? false,
+  );
+  const fonts =
+    useWorkspace((state) => state.project?.settings.fonts) ?? NO_FONTS;
+  const mockApiRoutes =
+    useWorkspace((state) => state.project?.settings.mockApiRoutes) ??
+    NO_MOCK_ROUTES;
   const name = useWorkspace((state) => state.project?.name ?? 'Preview');
 
   const document = useMemo(() => {
     if (!preview) {
       return buildPlaceholderDocument(
-        compileState === 'error' ? 'Fix the errors to see the app.' : 'Compiling…',
+        compileState === 'error'
+          ? 'Fix the errors to see the app.'
+          : 'Compiling…',
       );
     }
 
@@ -42,11 +51,12 @@ export function PreviewPane({ visible }: { visible: boolean }) {
       css: preview.css,
       tailwind,
       fonts,
+      mockApiRoutes,
       origin: window.location.origin,
       title: name,
       nonce: cspNonce(),
     });
-  }, [preview, tailwind, fonts, name, compileState]);
+  }, [preview, tailwind, fonts, mockApiRoutes, name, compileState]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -62,7 +72,11 @@ export function PreviewPane({ visible }: { visible: boolean }) {
       const store = useWorkspace.getState();
 
       if (message.type === 'preview:console') {
-        store.appendConsole({ level: message.level, text: message.text, at: message.at });
+        store.appendConsole({
+          level: message.level,
+          text: message.text,
+          at: message.at,
+        });
         return;
       }
 

@@ -203,6 +203,21 @@ export function SettingsDialog() {
                 onCheckedChange={(checked) => update({ autosave: checked })}
               />
             </div>
+
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <Label htmlFor="setting-format-on-save">Format on save</Label>
+                <p className="mt-1 text-label font-light text-muted-foreground">
+                  Runs Prettier on the current file when you press ⌘S. Format any file anytime with
+                  ⇧⌥F or the command palette.
+                </p>
+              </div>
+              <Switch
+                id="setting-format-on-save"
+                checked={settings.formatOnSave ?? false}
+                onCheckedChange={(checked) => update({ formatOnSave: checked })}
+              />
+            </div>
           </section>
 
           <Separator />

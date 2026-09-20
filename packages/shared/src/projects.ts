@@ -15,6 +15,7 @@ export function defaultSettings(): ProjectSettings {
     entryFile: 'src/main.tsx',
     tailwind: false,
     fonts: [],
+    mockApiRoutes: [],
     viewerToolbar: true,
     tabSize: 2,
     wordWrap: false,
@@ -25,7 +26,13 @@ export function defaultSettings(): ProjectSettings {
 }
 
 export function textFile(path: string, content: string): ProjectFile {
-  return { path, type: 'file', content, encoding: 'utf8', size: utf8Size(content) };
+  return {
+    path,
+    type: 'file',
+    content,
+    encoding: 'utf8',
+    size: utf8Size(content),
+  };
 }
 
 /** Materialises the directory entries implied by a set of file paths. */
@@ -50,10 +57,29 @@ export function withDirectories(files: FileMap): FileMap {
  * depends on this one, and a cycle costs more than one list.
  */
 const BINARY_EXTENSIONS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.ico', '.bmp',
-  '.woff', '.woff2', '.ttf', '.otf', '.eot',
-  '.mp4', '.webm', '.mov', '.mp3', '.wav', '.ogg',
-  '.pdf', '.zip', '.gz', '.wasm',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.avif',
+  '.ico',
+  '.bmp',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.otf',
+  '.eot',
+  '.mp4',
+  '.webm',
+  '.mov',
+  '.mp3',
+  '.wav',
+  '.ogg',
+  '.pdf',
+  '.zip',
+  '.gz',
+  '.wasm',
 ]);
 
 function isBinary(path: string): boolean {
@@ -68,7 +94,13 @@ export function filesFromRecord(record: Record<string, string>): FileMap {
     // A shared or restored project must come back as the encoding it left as,
     // or an image would be revived as a wall of base64 text.
     files[path] = isBinary(path)
-      ? { path, type: 'file', content, encoding: 'base64', size: Math.floor((content.length * 3) / 4) }
+      ? {
+          path,
+          type: 'file',
+          content,
+          encoding: 'base64',
+          size: Math.floor((content.length * 3) / 4),
+        }
       : textFile(path, content);
   }
 
@@ -82,7 +114,10 @@ export interface NewProjectInput {
   ownerId?: string | null;
 }
 
-export function createProject(input: NewProjectInput): { project: Project; files: FileMap } {
+export function createProject(input: NewProjectInput): {
+  project: Project;
+  files: FileMap;
+} {
   const template = getTemplate(input.templateId);
   const now = Date.now();
 
@@ -153,7 +188,10 @@ export function toSourceMap(files: FileMap): Record<string, string> {
   return out;
 }
 
-export function toSnapshot(project: Project, files: FileMap): PlaygroundSnapshot {
+export function toSnapshot(
+  project: Project,
+  files: FileMap,
+): PlaygroundSnapshot {
   return {
     id: project.id,
     name: project.name,
@@ -161,6 +199,7 @@ export function toSnapshot(project: Project, files: FileMap): PlaygroundSnapshot
     tailwind: project.settings.tailwind,
     // Older projects predate the field; a share must still produce a snapshot.
     fonts: project.settings.fonts ?? [],
+    mockApiRoutes: project.settings.mockApiRoutes ?? [],
     viewerToolbar: project.settings.viewerToolbar ?? true,
     files: toSourceMap(files),
     updatedAt: project.updatedAt,

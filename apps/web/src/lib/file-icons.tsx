@@ -1,8 +1,8 @@
-import type { ComponentType } from 'react';
-import { basename, extname } from '@mai-habi/filesystem';
-import { cn } from '@mai-habi/ui';
-import { File as FileIcon, FileCog, FileImage } from 'lucide-react';
-import { LANGUAGE_LOGOS, type LanguageLogo } from './language-logos';
+import type { ComponentType } from "react";
+import { basename, detectLanguageForPath, extname } from "@mai-habi/filesystem";
+import { cn } from "@mai-habi/ui";
+import { File as FileIcon, FileCog, FileImage } from "lucide-react";
+import { SvglLogo } from "../components/SvglLogo";
 
 /**
  * File-type icons for the explorer.
@@ -21,8 +21,8 @@ import { LANGUAGE_LOGOS, type LanguageLogo } from './language-logos';
  */
 
 interface FileKind {
-  /** A language mark, drawn from the generated logo paths. */
-  logo?: LanguageLogo;
+  /** A language mark resolved from the cached SVGL catalog. */
+  logo?: string;
   /** Or a generic glyph, for categories with no logo. */
   Icon?: ComponentType<{ className?: string }>;
   /** Semantic token class. Components never name a colour directly. */
@@ -31,84 +31,112 @@ interface FileKind {
   label: string;
 }
 
-const REACT: FileKind = { logo: 'react', tone: 'text-lang-react', label: 'React component' };
+const REACT: FileKind = {
+  logo: "react",
+  tone: "text-lang-react",
+  label: "React component",
+};
 const TYPESCRIPT: FileKind = {
-  logo: 'typescript',
-  tone: 'text-lang-typescript',
-  label: 'TypeScript',
+  logo: "typescript",
+  tone: "text-lang-typescript",
+  label: "TypeScript",
 };
 const JAVASCRIPT: FileKind = {
-  logo: 'javascript',
-  tone: 'text-lang-javascript',
-  label: 'JavaScript',
+  logo: "javascript",
+  tone: "text-lang-javascript",
+  label: "JavaScript",
 };
-const CSS: FileKind = { logo: 'css', tone: 'text-lang-css', label: 'Stylesheet' };
-const HTML: FileKind = { logo: 'html', tone: 'text-lang-html', label: 'HTML' };
-const JSON_FILE: FileKind = { logo: 'json', tone: 'text-lang-json', label: 'JSON' };
-const MARKDOWN: FileKind = { logo: 'markdown', tone: 'text-lang-markdown', label: 'Markdown' };
+const CSS: FileKind = {
+  logo: "css",
+  tone: "text-lang-css",
+  label: "Stylesheet",
+};
+const HTML: FileKind = { logo: "html", tone: "text-lang-html", label: "HTML" };
+const JSON_FILE: FileKind = {
+  logo: "json",
+  tone: "text-lang-json",
+  label: "JSON",
+};
+const MARKDOWN: FileKind = {
+  logo: "markdown",
+  tone: "text-lang-markdown",
+  label: "Markdown",
+};
 
-const IMAGE: FileKind = { Icon: FileImage, tone: 'text-lang-image', label: 'Image' };
-const CONFIG: FileKind = { Icon: FileCog, tone: 'text-lang-config', label: 'Configuration' };
-const PLAIN: FileKind = { Icon: FileIcon, tone: 'text-muted-foreground', label: 'File' };
+const IMAGE: FileKind = {
+  Icon: FileImage,
+  tone: "text-lang-image",
+  label: "Image",
+};
+const CONFIG: FileKind = {
+  Icon: FileCog,
+  tone: "text-lang-config",
+  label: "Configuration",
+};
+const PLAIN: FileKind = {
+  Icon: FileIcon,
+  tone: "text-muted-foreground",
+  label: "File",
+};
 
 const BY_EXTENSION: Record<string, FileKind> = {
-  '.tsx': REACT,
-  '.jsx': REACT,
+  ".tsx": REACT,
+  ".jsx": REACT,
 
-  '.ts': TYPESCRIPT,
-  '.mts': TYPESCRIPT,
-  '.cts': TYPESCRIPT,
+  ".ts": TYPESCRIPT,
+  ".mts": TYPESCRIPT,
+  ".cts": TYPESCRIPT,
 
-  '.js': JAVASCRIPT,
-  '.mjs': JAVASCRIPT,
-  '.cjs': JAVASCRIPT,
+  ".js": JAVASCRIPT,
+  ".mjs": JAVASCRIPT,
+  ".cjs": JAVASCRIPT,
 
-  '.css': CSS,
-  '.scss': CSS,
-  '.sass': CSS,
-  '.less': CSS,
+  ".css": CSS,
+  ".scss": CSS,
+  ".sass": CSS,
+  ".less": CSS,
 
-  '.html': HTML,
-  '.htm': HTML,
-  '.xml': HTML,
+  ".html": HTML,
+  ".htm": HTML,
+  ".xml": HTML,
 
-  '.json': JSON_FILE,
-  '.jsonc': JSON_FILE,
+  ".json": JSON_FILE,
+  ".jsonc": JSON_FILE,
 
-  '.md': MARKDOWN,
-  '.mdx': MARKDOWN,
-  '.txt': MARKDOWN,
+  ".md": MARKDOWN,
+  ".mdx": MARKDOWN,
+  ".txt": MARKDOWN,
 
-  '.svg': IMAGE,
-  '.png': IMAGE,
-  '.jpg': IMAGE,
-  '.jpeg': IMAGE,
-  '.gif': IMAGE,
-  '.webp': IMAGE,
-  '.avif': IMAGE,
-  '.ico': IMAGE,
-  '.bmp': IMAGE,
+  ".svg": IMAGE,
+  ".png": IMAGE,
+  ".jpg": IMAGE,
+  ".jpeg": IMAGE,
+  ".gif": IMAGE,
+  ".webp": IMAGE,
+  ".avif": IMAGE,
+  ".ico": IMAGE,
+  ".bmp": IMAGE,
 
-  '.woff': CONFIG,
-  '.woff2': CONFIG,
-  '.ttf': CONFIG,
-  '.otf': CONFIG,
+  ".woff": CONFIG,
+  ".woff2": CONFIG,
+  ".ttf": CONFIG,
+  ".otf": CONFIG,
 
-  '.yml': CONFIG,
-  '.yaml': CONFIG,
-  '.toml': CONFIG,
+  ".yml": CONFIG,
+  ".yaml": CONFIG,
+  ".toml": CONFIG,
 };
 
 /** Names that mean more than their extension does. */
 const BY_NAME: Record<string, FileKind> = {
-  'tsconfig.json': CONFIG,
-  'jsconfig.json': CONFIG,
-  'package.json': CONFIG,
-  'package-lock.json': CONFIG,
-  '.gitignore': CONFIG,
-  '.npmrc': CONFIG,
-  '.editorconfig': CONFIG,
-  'readme.md': MARKDOWN,
+  "tsconfig.json": CONFIG,
+  "jsconfig.json": CONFIG,
+  "package.json": CONFIG,
+  "package-lock.json": CONFIG,
+  ".gitignore": CONFIG,
+  ".npmrc": CONFIG,
+  ".editorconfig": CONFIG,
+  "readme.md": MARKDOWN,
   license: MARKDOWN,
 };
 
@@ -116,9 +144,19 @@ export function fileKind(path: string): FileKind {
   const name = basename(path).toLowerCase();
 
   if (BY_NAME[name]) return BY_NAME[name];
-  if (name.startsWith('.env')) return CONFIG;
+  if (name.startsWith(".env")) return CONFIG;
 
-  return BY_EXTENSION[extname(path)] ?? PLAIN;
+  const fixed = BY_EXTENSION[extname(path)];
+  if (fixed) return fixed;
+
+  const detected = detectLanguageForPath(path);
+  return detected.recognized
+    ? {
+        logo: detected.logo,
+        tone: "text-muted-foreground",
+        label: detected.label,
+      }
+    : PLAIN;
 }
 
 export interface FileTypeIconProps {
@@ -132,16 +170,9 @@ export function FileTypeIcon({ path, className }: FileTypeIconProps) {
   return (
     <>
       {logo ? (
-        <svg
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-          className={cn('shrink-0', tone, className)}
-        >
-          <path d={LANGUAGE_LOGOS[logo]} />
-        </svg>
+        <SvglLogo name={logo} className={className} fallbackClassName={tone} />
       ) : (
-        Icon && <Icon className={cn('shrink-0', tone, className)} />
+        Icon && <Icon className={cn("shrink-0", tone, className)} />
       )}
       <span className="sr-only">{label}</span>
     </>

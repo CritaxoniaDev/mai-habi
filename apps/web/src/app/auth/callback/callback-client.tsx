@@ -80,7 +80,7 @@ export function CallbackClient() {
           {error}
         </p>
         <Button variant="default" className="mt-5" asChild>
-          <a href="/">Back to projects</a>
+          <a href="/projects">Back to projects</a>
         </Button>
       </div>
     );

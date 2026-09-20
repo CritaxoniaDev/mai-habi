@@ -27,9 +27,8 @@ export interface AuthMenuProps {
 }
 
 /**
- * lucide dropped its brand marks, so this one is inlined from simple-icons the
- * same way the file-type logos are (see `scripts/sync-icons.mjs`). Sizing is
- * left to the button, which sets every descendant `svg`.
+ * lucide dropped its brand marks, so the sign-in provider keeps its small
+ * inline mark. Sizing is left to the button, which sets every descendant `svg`.
  *
  * simple-icons artwork is CC0 1.0; the mark remains a GitHub trademark and is
  * used here only to identify the sign-in provider.

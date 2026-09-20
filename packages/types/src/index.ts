@@ -83,6 +83,48 @@ export interface FontConfig {
   defaultBody: boolean;
 }
 
+export type MockApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+/** A browser-local API response intercepted inside the sandboxed preview. */
+export interface MockApiRoute {
+  id: string;
+  enabled: boolean;
+  method: MockApiMethod;
+  /** Exact pathname, such as `/api/products`. Query strings are ignored. */
+  path: string;
+  status: number;
+  delayMs: number;
+  /** Percentage of calls that should return a simulated 500 response. */
+  failureRate: number;
+  /** JSON text returned for successful calls. */
+  response: string;
+}
+
+/** A standalone JSON API that can be published under the HABI deployment. */
+export interface ApiApplication {
+  id: string;
+  name: string;
+  routes: MockApiRoute[];
+  /** `*` or one exact browser origin allowed to call the API. */
+  corsOrigin: string;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+  publishedAt: number | null;
+}
+
+export interface BackendService {
+  id: string;
+  name: string;
+  projectName: string;
+  source: string;
+  deploymentUrl: string | null;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+  publishedAt: number | null;
+}
+
 export interface ProjectSettings {
   /** File the compiler starts from, e.g. `src/main.tsx` or `index.html`. */
   entryFile: string;
@@ -90,6 +132,8 @@ export interface ProjectSettings {
   tailwind: boolean;
   /** Google Fonts loaded into the preview; empty when the project uses none. */
   fonts: FontConfig[];
+  /** Optional request fixtures run entirely inside the preview sandbox. */
+  mockApiRoutes?: MockApiRoute[];
   /**
    * Whether the shared viewer shows its floating toolbar. Off gives a clean
    * embed — just the running app, no chrome.
@@ -101,6 +145,8 @@ export interface ProjectSettings {
   autosave: boolean;
   /** Recompile automatically as the project changes. */
   autoCompile: boolean;
+  /** Run Prettier on the active file when it is explicitly saved (⌘S). */
+  formatOnSave?: boolean;
 }
 
 export interface Project {
@@ -134,6 +180,7 @@ export interface PlaygroundSnapshot {
   entryFile: string;
   tailwind: boolean;
   fonts: FontConfig[];
+  mockApiRoutes?: MockApiRoute[];
   viewerToolbar: boolean;
   files: Record<string, string>;
   updatedAt: number;
@@ -141,15 +188,11 @@ export interface PlaygroundSnapshot {
 
 /* -------------------------------------------------------------------- status */
 
-export type CompileState = 'idle' | 'loading-compiler' | 'compiling' | 'ready' | 'error';
+export type CompileState =
+  'idle' | 'loading-compiler' | 'compiling' | 'ready' | 'error';
 
 export type SaveStatus =
-  | 'saved-locally'
-  | 'saving'
-  | 'saved'
-  | 'offline'
-  | 'syncing'
-  | 'save-failed';
+  'saved-locally' | 'saving' | 'saved' | 'offline' | 'syncing' | 'save-failed';
 
 export interface Problem {
   path: string;

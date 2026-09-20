@@ -26,7 +26,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       className={cn(
         controlBase,
         'flex h-9 px-3 text-secondary font-light',
-        invalid && 'border-danger hover:border-danger focus-visible:border-danger',
+        invalid &&
+          'border-danger hover:border-danger focus-visible:border-danger',
         className,
       )}
       {...props}
@@ -35,16 +36,27 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 );
 Input.displayName = 'Input';
 
-export const Textarea = React.forwardRef<
-  HTMLTextAreaElement,
-  React.TextareaHTMLAttributes<HTMLTextAreaElement>
->(({ className, ...props }, ref) => (
-  <textarea
-    ref={ref}
-    className={cn(controlBase, 'flex min-h-20 px-3 py-2 text-secondary font-light', className)}
-    {...props}
-  />
-));
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  /** Wires the invalid state through to assistive technology. */
+  invalid?: boolean;
+}
+
+export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ className, invalid, ...props }, ref) => (
+    <textarea
+      ref={ref}
+      aria-invalid={invalid || undefined}
+      className={cn(
+        controlBase,
+        'flex min-h-20 px-3 py-2 text-secondary font-light',
+        invalid &&
+          'border-danger hover:border-danger focus-visible:border-danger',
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
 Textarea.displayName = 'Textarea';
 
 export const Label = React.forwardRef<
@@ -53,26 +65,45 @@ export const Label = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <LabelPrimitive.Root
     ref={ref}
-    className={cn('block text-secondary font-normal text-foreground', className)}
+    className={cn(
+      'block text-secondary font-normal text-foreground',
+      className,
+    )}
     {...props}
   />
 ));
 Label.displayName = 'Label';
 
 /** Help text sits under its control and is referenced by aria-describedby. */
-export function FieldHint({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-label font-light text-muted-foreground', className)} {...props} />;
+export function FieldHint({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p
+      className={cn('text-label font-light text-muted-foreground', className)}
+      {...props}
+    />
+  );
 }
 
 /**
  * Validation lives beside the field it describes and says what is wrong, never
  * just "invalid input".
  */
-export function FieldError({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
+export function FieldError({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) {
   if (!children) return null;
 
   return (
-    <p role="alert" className={cn('text-label font-light text-danger', className)} {...props}>
+    <p
+      role="alert"
+      className={cn('text-label font-light text-danger', className)}
+      {...props}
+    >
       {children}
     </p>
   );
@@ -92,7 +123,14 @@ export interface FieldProps {
 }
 
 /** Label, control, hint and error wired together with the right ARIA. */
-export function Field({ id, label, hint, error, className, children }: FieldProps) {
+export function Field({
+  id,
+  label,
+  hint,
+  error,
+  className,
+  children,
+}: FieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined;
@@ -100,7 +138,11 @@ export function Field({ id, label, hint, error, className, children }: FieldProp
   return (
     <div className={cn('space-y-2', className)}>
       <Label htmlFor={id}>{label}</Label>
-      {children({ id, invalid: Boolean(error), 'aria-describedby': describedBy })}
+      {children({
+        id,
+        invalid: Boolean(error),
+        'aria-describedby': describedBy,
+      })}
       {error ? (
         <FieldError id={errorId}>{error}</FieldError>
       ) : (
@@ -113,19 +155,24 @@ export function Field({ id, label, hint, error, className, children }: FieldProp
 export const Separator = React.forwardRef<
   React.ElementRef<typeof SeparatorPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
->(({ className, orientation = 'horizontal', decorative = true, ...props }, ref) => (
-  <SeparatorPrimitive.Root
-    ref={ref}
-    decorative={decorative}
-    orientation={orientation}
-    className={cn(
-      'shrink-0 bg-border',
-      orientation === 'horizontal' ? 'h-px w-full' : 'h-full w-px',
-      className,
-    )}
-    {...props}
-  />
-));
+>(
+  (
+    { className, orientation = 'horizontal', decorative = true, ...props },
+    ref,
+  ) => (
+    <SeparatorPrimitive.Root
+      ref={ref}
+      decorative={decorative}
+      orientation={orientation}
+      className={cn(
+        'shrink-0 bg-border',
+        orientation === 'horizontal' ? 'h-px w-full' : 'h-full w-px',
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
 Separator.displayName = 'Separator';
 
 export const Switch = React.forwardRef<
@@ -158,6 +205,7 @@ Switch.displayName = 'Switch';
 /* -------------------------------------------------------------------- select */
 
 export const Select = SelectPrimitive.Root;
+export const SelectGroup = SelectPrimitive.Group;
 export const SelectValue = SelectPrimitive.Value;
 
 export const SelectTrigger = React.forwardRef<
@@ -193,7 +241,8 @@ export const SelectContent = React.forwardRef<
       className={cn(
         'z-dropdown relative max-h-72 min-w-32 overflow-hidden rounded-lg border border-border',
         'bg-surface-raised p-1 text-secondary font-light shadow-overlay',
-        position === 'popper' && 'w-[var(--radix-select-trigger-width)] translate-y-1',
+        position === 'popper' &&
+          'w-[var(--radix-select-trigger-width)] translate-y-1',
         className,
       )}
       {...props}

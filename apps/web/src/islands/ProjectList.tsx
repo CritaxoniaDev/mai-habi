@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState, type ComponentType } from 'react';
-import type { Project, TemplateId } from '@mai-habi/types';
-import { formatRelativeTime } from '@mai-habi/shared';
-import { useSession } from '../state/session';
+import { useEffect, useState, type ComponentType } from "react";
+import type { Project, TemplateId } from "@mai-habi/types";
+import { formatRelativeTime } from "@mai-habi/shared";
+import { useSession } from "../state/session";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,16 +22,23 @@ import {
   Skeleton,
   cn,
   toast,
-} from '@mai-habi/ui';
-import { Copy, Download, FolderInput, MoreHorizontal, Square, Trash2 } from 'lucide-react';
-import { LANGUAGE_LOGOS, type LanguageLogo } from '../lib/language-logos';
+} from "@mai-habi/ui";
+import {
+  Copy,
+  Download,
+  FolderInput,
+  MoreHorizontal,
+  Square,
+  Trash2,
+} from "lucide-react";
+import { SvglLogo } from "../components/SvglLogo";
 import {
   duplicateProject,
   exportProject,
   loadProjects,
   projectHref,
   removeProject,
-} from '../lib/project-actions';
+} from "../lib/project-actions";
 
 /**
  * A project's stack, expressed the same way the file explorer expresses a file
@@ -44,7 +51,7 @@ import {
  * them; they must never be assembled from fragments.
  */
 interface Stack {
-  logo?: LanguageLogo;
+  logo?: string;
   Icon?: ComponentType<{ className?: string }>;
   /** Foreground for the mark. */
   tone: string;
@@ -56,80 +63,80 @@ interface Stack {
 }
 
 const STACKS: Record<TemplateId, Stack> = {
-  'react-ts': {
-    logo: 'typescript',
-    tone: 'text-lang-typescript',
-    wash: 'bg-lang-typescript/10',
-    rule: 'bg-lang-typescript',
-    label: 'React + TypeScript',
+  "react-ts": {
+    logo: "typescript",
+    tone: "text-lang-typescript",
+    wash: "bg-lang-typescript/10",
+    rule: "bg-lang-typescript",
+    label: "React + TypeScript",
   },
-  'react-js': {
-    logo: 'javascript',
-    tone: 'text-lang-javascript',
-    wash: 'bg-lang-javascript/10',
-    rule: 'bg-lang-javascript',
-    label: 'React + JavaScript',
+  "react-js": {
+    logo: "javascript",
+    tone: "text-lang-javascript",
+    wash: "bg-lang-javascript/10",
+    rule: "bg-lang-javascript",
+    label: "React + JavaScript",
   },
-  'react-motion': {
-    logo: 'react',
-    tone: 'text-lang-react',
-    wash: 'bg-lang-react/10',
-    rule: 'bg-lang-react',
-    label: 'React + Motion',
+  "react-motion": {
+    logo: "react",
+    tone: "text-lang-react",
+    wash: "bg-lang-react/10",
+    rule: "bg-lang-react",
+    label: "React + Motion",
   },
-  'react-tailwind': {
-    logo: 'tailwind',
-    tone: 'text-lang-tailwind',
-    wash: 'bg-lang-tailwind/10',
-    rule: 'bg-lang-tailwind',
-    label: 'React + Tailwind',
+  "react-tailwind": {
+    logo: "tailwind",
+    tone: "text-lang-tailwind",
+    wash: "bg-lang-tailwind/10",
+    rule: "bg-lang-tailwind",
+    label: "React + Tailwind",
   },
   // Next's own mark is monochrome by design, so it takes the foreground.
   next: {
-    logo: 'next',
-    tone: 'text-foreground',
-    wash: 'bg-surface-active',
-    rule: 'bg-border-strong',
-    label: 'Next.js',
+    logo: "next",
+    tone: "text-foreground",
+    wash: "bg-surface-active",
+    rule: "bg-border-strong",
+    label: "Next.js",
   },
-  'html-css-js': {
-    logo: 'html',
-    tone: 'text-lang-html',
-    wash: 'bg-lang-html/10',
-    rule: 'bg-lang-html',
-    label: 'HTML + CSS + JS',
+  "html-css-js": {
+    logo: "html",
+    tone: "text-lang-html",
+    wash: "bg-lang-html/10",
+    rule: "bg-lang-html",
+    label: "HTML + CSS + JS",
   },
   blank: {
     Icon: Square,
-    tone: 'text-muted-foreground',
-    wash: 'bg-surface-active',
-    rule: 'bg-border-strong',
-    label: 'Blank',
+    tone: "text-muted-foreground",
+    wash: "bg-surface-active",
+    rule: "bg-border-strong",
+    label: "Blank",
   },
   import: {
     Icon: FolderInput,
-    tone: 'text-lang-config',
-    wash: 'bg-lang-config/10',
-    rule: 'bg-lang-config',
-    label: 'Imported',
+    tone: "text-lang-config",
+    wash: "bg-lang-config/10",
+    rule: "bg-lang-config",
+    label: "Imported",
   },
 };
 
 /** Stacks the entry file can reveal that no template id covers. */
 const TYPESCRIPT_STACK: Stack = {
-  logo: 'typescript',
-  tone: 'text-lang-typescript',
-  wash: 'bg-lang-typescript/10',
-  rule: 'bg-lang-typescript',
-  label: 'TypeScript',
+  logo: "typescript",
+  tone: "text-lang-typescript",
+  wash: "bg-lang-typescript/10",
+  rule: "bg-lang-typescript",
+  label: "TypeScript",
 };
 
 const JAVASCRIPT_STACK: Stack = {
-  logo: 'javascript',
-  tone: 'text-lang-javascript',
-  wash: 'bg-lang-javascript/10',
-  rule: 'bg-lang-javascript',
-  label: 'JavaScript',
+  logo: "javascript",
+  tone: "text-lang-javascript",
+  wash: "bg-lang-javascript/10",
+  rule: "bg-lang-javascript",
+  label: "JavaScript",
 };
 
 /**
@@ -144,7 +151,7 @@ const JAVASCRIPT_STACK: Stack = {
  * far too much work for an icon.
  */
 function stackOf(project: Project): Stack {
-  if (project.templateId !== 'import' && STACKS[project.templateId]) {
+  if (project.templateId !== "import" && STACKS[project.templateId]) {
     return STACKS[project.templateId];
   }
 
@@ -154,13 +161,13 @@ function stackOf(project: Project): Stack {
 function inferStack(entryFile: string): Stack {
   const path = entryFile.toLowerCase();
 
-  if (path.endsWith('.html')) return STACKS['html-css-js'];
+  if (path.endsWith(".html")) return STACKS["html-css-js"];
   // A route file under app/ or pages/ is the shape of a Next project.
   if (/(^|\/)(app|pages)\//.test(path)) return STACKS.next;
-  if (path.endsWith('.tsx')) return STACKS['react-ts'];
-  if (path.endsWith('.jsx')) return STACKS['react-js'];
-  if (path.endsWith('.ts')) return TYPESCRIPT_STACK;
-  if (path.endsWith('.js')) return JAVASCRIPT_STACK;
+  if (path.endsWith(".tsx")) return STACKS["react-ts"];
+  if (path.endsWith(".jsx")) return STACKS["react-js"];
+  if (path.endsWith(".ts")) return TYPESCRIPT_STACK;
+  if (path.endsWith(".js")) return JAVASCRIPT_STACK;
 
   return STACKS.import;
 }
@@ -168,19 +175,18 @@ function inferStack(entryFile: string): Stack {
 function StackMark({ stack, className }: { stack: Stack; className?: string }) {
   if (stack.logo) {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden="true"
-        className={cn('shrink-0', stack.tone, className)}
-      >
-        <path d={LANGUAGE_LOGOS[stack.logo]} />
-      </svg>
+      <SvglLogo
+        name={stack.logo}
+        className={className}
+        fallbackClassName={stack.tone}
+      />
     );
   }
 
   const Icon = stack.Icon;
-  return Icon ? <Icon className={cn('shrink-0', stack.tone, className)} /> : null;
+  return Icon ? (
+    <Icon className={cn("shrink-0", stack.tone, className)} />
+  ) : null;
 }
 
 export default function ProjectList() {
@@ -188,7 +194,10 @@ export default function ProjectList() {
   const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
   const signedIn = useSession((state) => state.user !== null);
 
-  const refresh = () => loadProjects().then(setProjects).catch(() => setProjects([]));
+  const refresh = () =>
+    loadProjects()
+      .then(setProjects)
+      .catch(() => setProjects([]));
 
   useEffect(() => {
     void refresh();
@@ -206,8 +215,8 @@ export default function ProjectList() {
           <li
             key={card}
             className={cn(
-              'rounded-xl border border-border bg-surface p-4',
-              card === 0 && 'sm:col-span-2',
+              "rounded-xl border border-border bg-surface p-4",
+              card === 0 && "sm:col-span-2",
             )}
           >
             <Skeleton className="size-9 rounded-lg" />
@@ -260,12 +269,17 @@ export default function ProjectList() {
         ))}
       </ul>
 
-      <AlertDialog open={pendingDelete !== null} onOpenChange={() => setPendingDelete(null)}>
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={() => setPendingDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogTitle>Delete this project?</AlertDialogTitle>
           <AlertDialogDescription>
-            “{pendingDelete?.name}” and its files will be removed from this browser
-            {signedIn ? ' and from your account, on every device' : ''}. This cannot be undone.
+            “{pendingDelete?.name}” and its files will be removed from this
+            browser
+            {signedIn ? " and from your account, on every device" : ""}. This
+            cannot be undone.
           </AlertDialogDescription>
           <div className="mt-6 flex justify-end gap-2">
             <AlertDialogCancel asChild>
@@ -285,9 +299,11 @@ export default function ProjectList() {
                    */
                   void removeProject(target.id)
                     .catch((cause: unknown) =>
-                      toast.error('Could not delete the project', {
+                      toast.error("Could not delete the project", {
                         description:
-                          cause instanceof Error ? cause.message : 'The account copy was kept.',
+                          cause instanceof Error
+                            ? cause.message
+                            : "The account copy was kept.",
                       }),
                     )
                     .finally(refresh);
@@ -310,25 +326,30 @@ interface CardProps {
   onDelete: () => void;
 }
 
-function ProjectCard({ project, wide = false, onRefresh, onDelete }: CardProps) {
+function ProjectCard({
+  project,
+  wide = false,
+  onRefresh,
+  onDelete,
+}: CardProps) {
   const stack = stackOf(project);
-  const cloud = project.origin === 'cloud';
+  const cloud = project.origin === "cloud";
 
   return (
-    <li className={cn('group relative', wide && 'sm:col-span-2')}>
+    <li className={cn("group relative", wide && "sm:col-span-2")}>
       <div
         className={cn(
-          'relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface',
-          'transition-colors duration-[--duration-fast] ease-[--ease-standard]',
-          'hover:border-border-strong hover:bg-surface-hover',
+          "relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface",
+          "transition-colors duration-[--duration-fast] ease-[--ease-standard]",
+          "hover:border-border-strong hover:bg-surface-hover",
           // Focus lives on the overlay link, so the card shows the ring for it.
-          'has-[a:focus-visible]:border-border-strong',
+          "has-[a:focus-visible]:border-border-strong",
         )}
       >
         {/* The stack's colour as a hairline, giving the grid rhythm without tinting whole cards. */}
         <span
           aria-hidden="true"
-          className={cn('absolute inset-x-0 top-0 h-0.5', stack.rule)}
+          className={cn("absolute inset-x-0 top-0 h-0.5", stack.rule)}
         />
 
         {/*
@@ -345,17 +366,19 @@ function ProjectCard({ project, wide = false, onRefresh, onDelete }: CardProps) 
           <div className="flex items-start justify-between gap-3">
             <span
               className={cn(
-                'grid shrink-0 place-items-center rounded-lg',
+                "grid shrink-0 place-items-center rounded-lg",
                 stack.wash,
-                wide ? 'size-11' : 'size-9',
+                wide ? "size-11" : "size-9",
               )}
             >
-              <StackMark stack={stack} className={wide ? 'size-5' : 'size-4'} />
+              <StackMark stack={stack} className={wide ? "size-5" : "size-4"} />
               <span className="sr-only">{stack.label}</span>
             </span>
 
             <div className="pointer-events-auto flex items-center gap-1.5">
-              <Badge tone={cloud ? 'accent' : 'neutral'}>{cloud ? 'Cloud' : 'Local'}</Badge>
+              <Badge tone={cloud ? "accent" : "neutral"}>
+                {cloud ? "Cloud" : "Local"}
+              </Badge>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -363,11 +386,11 @@ function ProjectCard({ project, wide = false, onRefresh, onDelete }: CardProps) 
                     variant="ghost"
                     size="icon-sm"
                     className={cn(
-                      'touch-target',
+                      "touch-target",
                       // Always reachable by keyboard and touch; quiet until hover on pointer devices.
-                      'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100',
-                      'sm:data-[state=open]:opacity-100',
-                      'transition-opacity duration-[--duration-fast]',
+                      "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
+                      "sm:data-[state=open]:opacity-100",
+                      "transition-opacity duration-[--duration-fast]",
                     )}
                     aria-label={`Actions for ${project.name}`}
                   >
@@ -379,14 +402,18 @@ function ProjectCard({ project, wide = false, onRefresh, onDelete }: CardProps) 
                     onSelect={() =>
                       void duplicateProject(project)
                         .then(onRefresh)
-                        .catch(() => toast.error('Could not duplicate that project.'))
+                        .catch(() =>
+                          toast.error("Could not duplicate that project."),
+                        )
                     }
                   >
                     <Copy /> Duplicate
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() =>
-                      void exportProject(project).catch(() => toast.error('Export failed.'))
+                      void exportProject(project).catch(() =>
+                        toast.error("Export failed."),
+                      )
                     }
                   >
                     <Download /> Export as ZIP
@@ -403,8 +430,8 @@ function ProjectCard({ project, wide = false, onRefresh, onDelete }: CardProps) 
           <div className="mt-4 min-w-0 flex-1">
             <p
               className={cn(
-                'truncate text-foreground',
-                wide ? 'text-section font-light' : 'text-panel font-normal',
+                "truncate text-foreground",
+                wide ? "text-section font-light" : "text-panel font-normal",
               )}
             >
               {project.name}

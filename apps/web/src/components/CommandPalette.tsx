@@ -13,14 +13,19 @@ import {
   setThemeMode,
 } from '@mai-habi/ui';
 import {
+  AlignLeft,
   Compass,
   Download,
+  ExternalLink,
   FilePlus,
+  FlaskConical,
   FolderPlus,
+  History,
   Monitor,
   Moon,
   PanelBottom,
   PanelLeft,
+  Palette,
   Play,
   RotateCw,
   Settings,
@@ -33,6 +38,8 @@ import {
 import { useUi } from '../state/ui';
 import { useWorkspace } from '../state/workspace';
 import { openViewer, recompile } from '../lib/run';
+import { formatActive } from '../lib/format';
+import { openInStackBlitz, openInCodeSandbox } from '../lib/export-targets';
 import { startProductTour } from '../lib/tour';
 
 const THEME_ICONS = { light: Sun, dark: Moon, system: Monitor } as const;
@@ -41,9 +48,14 @@ export function CommandPalette() {
   const mode = useUi((state) => state.palette);
   const setPalette = useUi((state) => state.setPalette);
   const files = useWorkspace((state) => state.files);
-  const tailwind = useWorkspace((state) => state.project?.settings.tailwind ?? false);
+  const tailwind = useWorkspace(
+    (state) => state.project?.settings.tailwind ?? false,
+  );
 
-  const paths = useMemo(() => listFiles(files).map((file) => file.path), [files]);
+  const paths = useMemo(
+    () => listFiles(files).map((file) => file.path),
+    [files],
+  );
 
   const close = () => setPalette(null);
   const runAnd = (action: () => void) => () => {
@@ -52,8 +64,14 @@ export function CommandPalette() {
   };
 
   return (
-    <CommandDialog open={mode !== null} onOpenChange={(open) => setPalette(open ? mode : null)}>
-      <CommandInput placeholder={mode === 'files' ? 'Go to file…' : 'Type a command…'} autoFocus />
+    <CommandDialog
+      open={mode !== null}
+      onOpenChange={(open) => setPalette(open ? mode : null)}
+    >
+      <CommandInput
+        placeholder={mode === 'files' ? 'Go to file…' : 'Type a command…'}
+        autoFocus
+      />
       <CommandList>
         <CommandEmpty>Nothing matches that.</CommandEmpty>
 
@@ -68,7 +86,30 @@ export function CommandPalette() {
                 <RotateCw /> Rebuild
                 <CommandShortcut>⌘R</CommandShortcut>
               </CommandItem>
-              <CommandItem onSelect={runAnd(() => useUi.getState().setDialog('share'))}>
+              <CommandItem onSelect={runAnd(() => void formatActive())}>
+                <AlignLeft /> Format document
+                <CommandShortcut>⇧⌥F</CommandShortcut>
+              </CommandItem>
+              <CommandItem
+                onSelect={runAnd(() => useUi.getState().setDialog('history'))}
+              >
+                <History /> Version history…
+              </CommandItem>
+              <CommandItem
+                onSelect={runAnd(() =>
+                  useUi.getState().setDialog('design-tokens'),
+                )}
+              >
+                <Palette /> Design token explorer
+              </CommandItem>
+              <CommandItem
+                onSelect={runAnd(() => useUi.getState().setDialog('mock-api'))}
+              >
+                <FlaskConical /> Mock API lab
+              </CommandItem>
+              <CommandItem
+                onSelect={runAnd(() => useUi.getState().setDialog('share'))}
+              >
                 <Share2 /> Share project
               </CommandItem>
               <CommandItem
@@ -79,14 +120,25 @@ export function CommandPalette() {
               >
                 <Download /> Export as ZIP
               </CommandItem>
+              <CommandItem onSelect={runAnd(() => void openInStackBlitz())}>
+                <ExternalLink /> Open in StackBlitz
+              </CommandItem>
+              <CommandItem onSelect={runAnd(() => void openInCodeSandbox())}>
+                <ExternalLink /> Open in CodeSandbox
+              </CommandItem>
               <CommandItem
                 onSelect={runAnd(() =>
-                  useWorkspace.getState().updateSettings({ tailwind: !tailwind }),
+                  useWorkspace
+                    .getState()
+                    .updateSettings({ tailwind: !tailwind }),
                 )}
               >
-                <Wind /> {tailwind ? 'Disable Tailwind CSS' : 'Enable Tailwind CSS'}
+                <Wind />{' '}
+                {tailwind ? 'Disable Tailwind CSS' : 'Enable Tailwind CSS'}
               </CommandItem>
-              <CommandItem onSelect={runAnd(() => useUi.getState().setDialog('fonts'))}>
+              <CommandItem
+                onSelect={runAnd(() => useUi.getState().setDialog('fonts'))}
+              >
                 <Type /> Fonts…
               </CommandItem>
               <CommandItem
@@ -96,19 +148,25 @@ export function CommandPalette() {
               >
                 <Webhook /> REST client
               </CommandItem>
-              <CommandItem onSelect={runAnd(() => useUi.getState().setDialog('settings'))}>
+              <CommandItem
+                onSelect={runAnd(() => useUi.getState().setDialog('settings'))}
+              >
                 <Settings /> Project settings
               </CommandItem>
             </CommandGroup>
 
             <CommandGroup heading="Files">
               <CommandItem
-                onSelect={runAnd(() => useWorkspace.getState().requestNewNode('file'))}
+                onSelect={runAnd(() =>
+                  useWorkspace.getState().requestNewNode('file'),
+                )}
               >
                 <FilePlus /> New file
               </CommandItem>
               <CommandItem
-                onSelect={runAnd(() => useWorkspace.getState().requestNewNode('directory'))}
+                onSelect={runAnd(() =>
+                  useWorkspace.getState().requestNewNode('directory'),
+                )}
               >
                 <FolderPlus /> New folder
               </CommandItem>
@@ -122,7 +180,10 @@ export function CommandPalette() {
               {THEME_MODES.map((option) => {
                 const Icon = THEME_ICONS[option];
                 return (
-                  <CommandItem key={option} onSelect={runAnd(() => setThemeMode(option))}>
+                  <CommandItem
+                    key={option}
+                    onSelect={runAnd(() => setThemeMode(option))}
+                  >
                     <Icon /> Appearance: {THEME_LABELS[option]}
                   </CommandItem>
                 );
@@ -130,15 +191,27 @@ export function CommandPalette() {
             </CommandGroup>
 
             <CommandGroup heading="View">
-              <CommandItem onSelect={runAnd(() => useWorkspace.getState().toggleExplorer())}>
+              <CommandItem
+                onSelect={runAnd(() =>
+                  useWorkspace.getState().toggleExplorer(),
+                )}
+              >
                 <PanelLeft /> Toggle files
                 <CommandShortcut>⌘B</CommandShortcut>
               </CommandItem>
-              <CommandItem onSelect={runAnd(() => useWorkspace.getState().togglePanel('console'))}>
+              <CommandItem
+                onSelect={runAnd(() =>
+                  useWorkspace.getState().togglePanel('console'),
+                )}
+              >
                 <PanelBottom /> Toggle console
                 <CommandShortcut>⌘`</CommandShortcut>
               </CommandItem>
-              <CommandItem onSelect={runAnd(() => useWorkspace.getState().setBottomTab('preview'))}>
+              <CommandItem
+                onSelect={runAnd(() =>
+                  useWorkspace.getState().setBottomTab('preview'),
+                )}
+              >
                 <PanelBottom /> Show preview panel
               </CommandItem>
             </CommandGroup>

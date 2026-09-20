@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Toaster } from '@mai-habi/ui';
 import { Plus } from 'lucide-react';
 import { NewProjectDialog } from '../components/dashboard/NewProjectDialog';
+import { CompareProjectsDialog } from '../components/dashboard/CompareProjectsDialog';
 
 /** Dashboard header actions. The list beside it is a separate island. */
 export default function DashboardActions() {
@@ -11,6 +12,7 @@ export default function DashboardActions() {
 
   return (
     <div className="flex items-center gap-2">
+      <CompareProjectsDialog />
       <Button variant="outline" onClick={() => setOpen(true)}>
         Import
       </Button>

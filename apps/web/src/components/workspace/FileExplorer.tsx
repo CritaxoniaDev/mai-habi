@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { TreeNode } from '@mai-habi/types';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { TreeNode } from "@mai-habi/types";
 import {
   basename,
   buildTree,
+  detectLanguageForPath,
   dirname,
   downloadFile,
   importFromDataTransfer,
   importFromFiles,
   joinPath,
-} from '@mai-habi/filesystem';
+} from "@mai-habi/filesystem";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +25,7 @@ import {
   ContextMenuTrigger,
   cn,
   toast,
-} from '@mai-habi/ui';
+} from "@mai-habi/ui";
 import {
   ChevronDown,
   ChevronRight,
@@ -38,24 +39,26 @@ import {
   Trash2,
   Upload,
   X,
-} from 'lucide-react';
-import { useWorkspace } from '../../state/workspace';
-import { FileTypeIcon } from '../../lib/file-icons';
+} from "lucide-react";
+import { useWorkspace } from "../../state/workspace";
+import { FileTypeIcon } from "../../lib/file-icons";
 
 interface DraftEntry {
   parent: string;
-  type: 'file' | 'directory';
+  type: "file" | "directory";
 }
 
 /** Explains exactly what is wrong rather than reporting "invalid". */
 function validateName(name: string, siblings: string[]): string | null {
   const trimmed = name.trim();
 
-  if (!trimmed) return 'Enter a name.';
-  if (trimmed.includes('/')) return 'Names cannot contain "/".';
-  if (trimmed === '.' || trimmed === '..') return 'That name is reserved.';
-  if (/[\\:*?"<>|]/.test(trimmed)) return 'Names cannot contain \\ : * ? " < > or |';
-  if (siblings.includes(trimmed)) return `"${trimmed}" already exists in this folder.`;
+  if (!trimmed) return "Enter a name.";
+  if (trimmed.includes("/")) return 'Names cannot contain "/".';
+  if (trimmed === "." || trimmed === "..") return "That name is reserved.";
+  if (/[\\:*?"<>|]/.test(trimmed))
+    return 'Names cannot contain \\ : * ? " < > or |';
+  if (siblings.includes(trimmed))
+    return `"${trimmed}" already exists in this folder.`;
 
   return null;
 }
@@ -65,15 +68,20 @@ export function FileExplorer() {
   const activeTab = useWorkspace((state) => state.activeTab);
   const newNodeRequest = useWorkspace((state) => state.newNodeRequest);
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ src: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    src: true,
+  });
   const [selected, setSelected] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftEntry | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<{ path: string; count: number } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    path: string;
+    count: number;
+  } | null>(null);
 
   const uploadInput = useRef<HTMLInputElement>(null);
-  const uploadTarget = useRef<string>('');
+  const uploadTarget = useRef<string>("");
 
   /**
    * Opens the file picker for a folder.
@@ -96,7 +104,8 @@ export function FileExplorer() {
     const walk = (nodes: TreeNode[]) => {
       for (const node of nodes) {
         out.push(node);
-        if (node.type === 'directory' && expanded[node.path]) walk(node.children ?? []);
+        if (node.type === "directory" && expanded[node.path])
+          walk(node.children ?? []);
       }
     };
     walk(tree);
@@ -106,16 +115,17 @@ export function FileExplorer() {
   // Reveal the folder containing whatever tab is open.
   useEffect(() => {
     if (!activeTab) return;
-    const segments = activeTab.split('/');
+    const segments = activeTab.split("/");
     segments.pop();
 
-    let prefix = '';
+    let prefix = "";
     const next: Record<string, boolean> = {};
     for (const segment of segments) {
       prefix = prefix ? `${prefix}/${segment}` : segment;
       next[prefix] = true;
     }
-    if (Object.keys(next).length > 0) setExpanded((current) => ({ ...current, ...next }));
+    if (Object.keys(next).length > 0)
+      setExpanded((current) => ({ ...current, ...next }));
   }, [activeTab]);
 
   const siblingsOf = (parent: string, exclude?: string) =>
@@ -138,14 +148,16 @@ export function FileExplorer() {
     const path = joinPath(entry.parent, name.trim());
 
     try {
-      if (entry.type === 'file') store().createFile(path);
+      if (entry.type === "file") store().createFile(path);
       else {
         store().createFolder(path);
         setExpanded((current) => ({ ...current, [path]: true }));
       }
       setSelected(path);
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Could not create that.');
+      toast.error(
+        cause instanceof Error ? cause.message : "Could not create that.",
+      );
     }
 
     return true;
@@ -168,13 +180,15 @@ export function FileExplorer() {
       store().renameNode(path, name.trim());
       setSelected(joinPath(dirname(path), name.trim()));
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Could not rename that.');
+      toast.error(
+        cause instanceof Error ? cause.message : "Could not rename that.",
+      );
     }
 
     return true;
   };
 
-  const beginCreate = (parent: string, type: 'file' | 'directory') => {
+  const beginCreate = (parent: string, type: "file" | "directory") => {
     if (parent) setExpanded((current) => ({ ...current, [parent]: true }));
     setDraft({ parent, type });
   };
@@ -185,12 +199,12 @@ export function FileExplorer() {
    * menu already follows, applied to requests arriving from elsewhere.
    */
   const draftParentForSelection = (): string => {
-    if (!selected) return '';
+    if (!selected) return "";
 
     const node = store().files[selected];
-    if (!node) return '';
+    if (!node) return "";
 
-    return node.type === 'directory' ? selected : dirname(selected);
+    return node.type === "directory" ? selected : dirname(selected);
   };
 
   useEffect(() => {
@@ -207,13 +221,13 @@ export function FileExplorer() {
     const node = store().files[path];
     if (!node) return;
 
-    if (node.type === 'file') {
+    if (node.type === "file") {
       store().deleteNode(path);
       return;
     }
 
-    const count = Object.keys(store().files).filter(
-      (candidate) => candidate.startsWith(`${path}/`),
+    const count = Object.keys(store().files).filter((candidate) =>
+      candidate.startsWith(`${path}/`),
     ).length;
 
     if (count === 0) {
@@ -229,13 +243,15 @@ export function FileExplorer() {
     event.stopPropagation();
     setDragOver(null);
 
-    const moved = event.dataTransfer.getData('application/x-mai-habi-path');
+    const moved = event.dataTransfer.getData("application/x-mai-habi-path");
     if (moved) {
       if (moved === parent || dirname(moved) === parent) return;
       try {
         store().moveNode(moved, joinPath(parent, basename(moved)));
       } catch (cause) {
-        toast.error(cause instanceof Error ? cause.message : 'Could not move that.');
+        toast.error(
+          cause instanceof Error ? cause.message : "Could not move that.",
+        );
       }
       return;
     }
@@ -244,7 +260,9 @@ export function FileExplorer() {
 
     void importFromDataTransfer(event.dataTransfer, { stripRoot: false })
       .then((result) => mergeImported(result.files, parent, result.warnings))
-      .catch((cause) => toast.error('Import failed', { description: String(cause) }));
+      .catch((cause) =>
+        toast.error("Import failed", { description: String(cause) }),
+      );
   };
 
   const mergeImported = (
@@ -268,47 +286,53 @@ export function FileExplorer() {
       const next = rows[target];
       if (!next) return;
       setSelected(next.path);
-      const element = document.querySelector<HTMLElement>(`[data-tree-path="${CSS.escape(next.path)}"]`);
+      const element = document.querySelector<HTMLElement>(
+        `[data-tree-path="${CSS.escape(next.path)}"]`,
+      );
       element?.focus();
     };
 
     switch (event.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         event.preventDefault();
         focusRow(index + 1);
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         event.preventDefault();
         focusRow(index - 1);
         break;
-      case 'ArrowRight':
+      case "ArrowRight":
         event.preventDefault();
-        if (node.type === 'directory' && !expanded[node.path]) {
+        if (node.type === "directory" && !expanded[node.path]) {
           setExpanded((current) => ({ ...current, [node.path]: true }));
         } else {
           focusRow(index + 1);
         }
         break;
-      case 'ArrowLeft':
+      case "ArrowLeft":
         event.preventDefault();
-        if (node.type === 'directory' && expanded[node.path]) {
+        if (node.type === "directory" && expanded[node.path]) {
           setExpanded((current) => ({ ...current, [node.path]: false }));
         } else {
           const parent = dirname(node.path);
           if (parent) focusRow(rows.findIndex((row) => row.path === parent));
         }
         break;
-      case 'Enter':
-      case ' ':
+      case "Enter":
+      case " ":
         event.preventDefault();
-        if (node.type === 'file') store().openFile(node.path);
-        else setExpanded((current) => ({ ...current, [node.path]: !current[node.path] }));
+        if (node.type === "file") store().openFile(node.path);
+        else
+          setExpanded((current) => ({
+            ...current,
+            [node.path]: !current[node.path],
+          }));
         break;
-      case 'F2':
+      case "F2":
         event.preventDefault();
         setRenaming(node.path);
         break;
-      case 'Delete':
+      case "Delete":
         event.preventDefault();
         requestDelete(node.path);
         break;
@@ -317,7 +341,11 @@ export function FileExplorer() {
     }
   };
 
-  const renderNode = (node: TreeNode, ancestors: boolean[], isLast: boolean) => {
+  const renderNode = (
+    node: TreeNode,
+    ancestors: boolean[],
+    isLast: boolean,
+  ) => {
     const isOpen = expanded[node.path] ?? false;
     const isOpenFile = activeTab === node.path;
     const isSelected = selected === node.path;
@@ -331,7 +359,7 @@ export function FileExplorer() {
       <div
         data-tree-path={node.path}
         role="treeitem"
-        aria-expanded={node.type === 'directory' ? isOpen : undefined}
+        aria-expanded={node.type === "directory" ? isOpen : undefined}
         aria-selected={isSelected}
         aria-level={depth + 1}
         tabIndex={isSelected || (!selected && isOpenFile) ? 0 : -1}
@@ -339,8 +367,8 @@ export function FileExplorer() {
         title={node.path}
         onKeyDown={(event) => onRowKeyDown(event, node)}
         onDragStart={(event) => {
-          event.dataTransfer.setData('application/x-mai-habi-path', node.path);
-          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData("application/x-mai-habi-path", node.path);
+          event.dataTransfer.effectAllowed = "move";
         }}
         onDragOver={(event) => {
           // Both kinds accept a drop; a file stands in for its own folder.
@@ -348,42 +376,62 @@ export function FileExplorer() {
           // The container behind also handles dragover, and would otherwise
           // win and highlight the project root instead of this row.
           event.stopPropagation();
-          setDragOver(node.type === 'directory' ? node.path : dirname(node.path));
+          setDragOver(
+            node.type === "directory" ? node.path : dirname(node.path),
+          );
         }}
-        onDragLeave={() => setDragOver((current) => (current === node.path ? null : current))}
+        onDragLeave={() =>
+          setDragOver((current) => (current === node.path ? null : current))
+        }
         onDrop={(event) =>
-          node.type === 'directory' ? handleDrop(event, node.path) : handleDrop(event, dirname(node.path))
+          node.type === "directory"
+            ? handleDrop(event, node.path)
+            : handleDrop(event, dirname(node.path))
         }
         onClick={() => {
           setSelected(node.path);
-          if (node.type === 'directory') {
+          if (node.type === "directory") {
             setExpanded((current) => ({ ...current, [node.path]: !isOpen }));
           } else {
             store().openFile(node.path);
           }
         }}
         className={cn(
-          'group relative flex h-7 cursor-pointer select-none items-center gap-1 pl-1.5 pr-2 outline-none',
-          'text-secondary font-light transition-colors duration-[--duration-fast] ease-[--ease-standard]',
+          "group relative flex h-7 cursor-pointer select-none items-center gap-1 pl-1.5 pr-2 outline-none",
+          "text-secondary font-light transition-colors duration-[--duration-fast] ease-[--ease-standard]",
           // The open file stays marked even when the explorer has no focus.
-          isOpenFile ? 'bg-surface-active text-foreground' : 'text-foreground-secondary',
-          !isOpenFile && 'hover:bg-surface-hover hover:text-foreground',
-          isSelected && !isOpenFile && 'bg-surface-hover text-foreground',
-          'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
+          isOpenFile
+            ? "bg-surface-active text-foreground"
+            : "text-foreground-secondary",
+          !isOpenFile && "hover:bg-surface-hover hover:text-foreground",
+          isSelected && !isOpenFile && "bg-surface-hover text-foreground",
+          "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
           dragOver !== null &&
-            dragOver === (node.type === 'directory' ? node.path : dirname(node.path)) &&
-            'bg-surface-active ring-1 ring-inset ring-border-strong',
+            dragOver ===
+              (node.type === "directory" ? node.path : dirname(node.path)) &&
+            "bg-surface-active ring-1 ring-inset ring-border-strong",
         )}
       >
-        {isOpenFile && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-foreground" />}
+        {isOpenFile && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 w-0.5 bg-foreground"
+          />
+        )}
 
         <TreeGuide ancestors={ancestors} isLast={isLast} />
 
-        {node.type === 'directory' ? (
+        {node.type === "directory" ? (
           isOpen ? (
-            <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <ChevronDown
+              className="size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
           ) : (
-            <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <ChevronRight
+              className="size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
           )
         ) : (
           <FileTypeIcon path={node.path} className="size-3.5" />
@@ -406,12 +454,16 @@ export function FileExplorer() {
         <ContextMenu>
           <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
           <ContextMenuContent>
-            {node.type === 'directory' ? (
+            {node.type === "directory" ? (
               <>
-                <ContextMenuItem onSelect={() => beginCreate(node.path, 'file')}>
+                <ContextMenuItem
+                  onSelect={() => beginCreate(node.path, "file")}
+                >
                   <FilePlus /> New file
                 </ContextMenuItem>
-                <ContextMenuItem onSelect={() => beginCreate(node.path, 'directory')}>
+                <ContextMenuItem
+                  onSelect={() => beginCreate(node.path, "directory")}
+                >
                   <FolderPlus /> New folder
                 </ContextMenuItem>
                 <ContextMenuItem onSelect={() => openUpload(node.path)}>
@@ -426,7 +478,8 @@ export function FileExplorer() {
                 <ContextMenuItem
                   onSelect={() => {
                     const file = store().files[node.path];
-                    if (file?.type === 'file') downloadFile(node.path, file.content, file.encoding);
+                    if (file?.type === "file")
+                      downloadFile(node.path, file.content, file.encoding);
                   }}
                 >
                   <Download /> Download
@@ -434,7 +487,7 @@ export function FileExplorer() {
                 <ContextMenuItem
                   onSelect={() => {
                     void navigator.clipboard.writeText(node.path);
-                    toast.success('Path copied');
+                    toast.success("Path copied");
                   }}
                 >
                   <Link2 /> Copy path
@@ -443,25 +496,34 @@ export function FileExplorer() {
             )}
 
             <ContextMenuSeparator />
-            <ContextMenuItem onSelect={() => setTimeout(() => setRenaming(node.path), 0)}>
+            <ContextMenuItem
+              onSelect={() => setTimeout(() => setRenaming(node.path), 0)}
+            >
               <Pencil /> Rename
             </ContextMenuItem>
             <ContextMenuItem onSelect={() => store().duplicateNode(node.path)}>
               <Copy /> Duplicate
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem destructive onSelect={() => requestDelete(node.path)}>
+            <ContextMenuItem
+              destructive
+              onSelect={() => requestDelete(node.path)}
+            >
               <Trash2 /> Delete
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
 
-        {node.type === 'directory' && isOpen && (
+        {node.type === "directory" && isOpen && (
           <>
             {children.map((child, index) =>
               // A continuation line is drawn for this level only while more
               // siblings follow; the last child leaves the column blank.
-              renderNode(child, [...ancestors, !isLast], !hasDraft && index === children.length - 1),
+              renderNode(
+                child,
+                [...ancestors, !isLast],
+                !hasDraft && index === children.length - 1,
+              ),
             )}
             {hasDraft && draft && (
               <DraftRow
@@ -487,16 +549,20 @@ export function FileExplorer() {
             className="flex h-full flex-col overflow-y-auto py-1"
             onDragOver={(event) => {
               event.preventDefault();
-              setDragOver('');
+              setDragOver("");
             }}
             onDragLeave={() => setDragOver(null)}
-            onDrop={(event) => handleDrop(event, '')}
+            onDrop={(event) => handleDrop(event, "")}
           >
             {tree.map((node, index) =>
-              renderNode(node, [], draft?.parent !== '' && index === tree.length - 1),
+              renderNode(
+                node,
+                [],
+                draft?.parent !== "" && index === tree.length - 1,
+              ),
             )}
 
-            {draft?.parent === '' && (
+            {draft?.parent === "" && (
               <DraftRow
                 ancestors={[]}
                 type={draft.type}
@@ -519,12 +585,18 @@ export function FileExplorer() {
                 const parent = uploadTarget.current;
 
                 void importFromFiles(picked.files, { stripRoot: false })
-                  .then((result) => mergeImported(result.files, parent, result.warnings))
-                  .catch((cause) => toast.error('Upload failed', { description: String(cause) }))
+                  .then((result) =>
+                    mergeImported(result.files, parent, result.warnings),
+                  )
+                  .catch((cause) =>
+                    toast.error("Upload failed", {
+                      description: String(cause),
+                    }),
+                  )
                   // Without this the same file cannot be picked twice: the value
                   // is unchanged, so the browser fires no second change event.
                   .finally(() => {
-                    picked.value = '';
+                    picked.value = "";
                   });
               }}
             />
@@ -532,26 +604,30 @@ export function FileExplorer() {
         </ContextMenuTrigger>
 
         <ContextMenuContent>
-          <ContextMenuItem onSelect={() => beginCreate('', 'file')}>
+          <ContextMenuItem onSelect={() => beginCreate("", "file")}>
             <FilePlus /> New file
           </ContextMenuItem>
-          <ContextMenuItem onSelect={() => beginCreate('', 'directory')}>
+          <ContextMenuItem onSelect={() => beginCreate("", "directory")}>
             <FolderPlus /> New folder
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem onSelect={() => openUpload('')}>
+          <ContextMenuItem onSelect={() => openUpload("")}>
             <Upload /> Import files
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 
-      <AlertDialog open={pendingDelete !== null} onOpenChange={() => setPendingDelete(null)}>
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={() => setPendingDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogTitle>Delete this folder?</AlertDialogTitle>
           <AlertDialogDescription>
-            “{pendingDelete ? basename(pendingDelete.path) : ''}” contains {pendingDelete?.count}{' '}
-            {pendingDelete?.count === 1 ? 'item' : 'items'}. They will all be removed from the
-            project. This cannot be undone.
+            “{pendingDelete ? basename(pendingDelete.path) : ""}” contains{" "}
+            {pendingDelete?.count}{" "}
+            {pendingDelete?.count === 1 ? "item" : "items"}. They will all be
+            removed from the project. This cannot be undone.
           </AlertDialogDescription>
           <div className="mt-6 flex justify-end gap-2">
             <AlertDialogCancel asChild>
@@ -590,14 +666,20 @@ export function FileExplorer() {
  * Purely decorative: the tree itself carries `aria-level`, so this stays hidden
  * from assistive technology rather than being read out as punctuation.
  */
-function TreeGuide({ ancestors, isLast }: { ancestors: boolean[]; isLast: boolean }) {
+function TreeGuide({
+  ancestors,
+  isLast,
+}: {
+  ancestors: boolean[];
+  isLast: boolean;
+}) {
   return (
     <span aria-hidden="true" className="flex shrink-0 self-stretch">
       {ancestors.map((hasMore, depth) => (
         <span
           key={depth}
           className={cn(
-            'relative w-3',
+            "relative w-3",
             // A line continues past this row only while that ancestor has more below it.
             hasMore &&
               "before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-border-strong before:content-['']",
@@ -607,11 +689,11 @@ function TreeGuide({ ancestors, isLast }: { ancestors: boolean[]; isLast: boolea
 
       <span
         className={cn(
-          'relative w-3',
+          "relative w-3",
           // The elbow: down from the top, then out to the right at mid-row.
           "before:absolute before:left-1/2 before:top-0 before:w-px before:bg-border-strong before:content-['']",
           // A last child stops at the turn; a middle one carries on to the next row.
-          isLast ? 'before:h-1/2' : 'before:bottom-0',
+          isLast ? "before:h-1/2" : "before:bottom-0",
           "after:absolute after:left-1/2 after:top-1/2 after:h-px after:w-1/2 after:bg-border-strong after:content-['']",
         )}
       />
@@ -626,22 +708,40 @@ function DraftRow({
   onCancel,
 }: {
   ancestors: boolean[];
-  type: 'file' | 'directory';
+  type: "file" | "directory";
   onSubmit: (name: string) => boolean;
   onCancel: () => void;
 }) {
+  const [name, setName] = useState("");
+  const language = detectLanguageForPath(name);
+
   return (
     <div className="flex h-7 items-center gap-1 pl-1.5 pr-2 text-secondary">
       <TreeGuide ancestors={ancestors} isLast />
 
-      {type === 'directory' ? (
-        <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      {type === "directory" ? (
+        <ChevronRight
+          className="size-3.5 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
       ) : (
-        <FileIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <FileTypeIcon path={name} className="size-3.5" />
       )}
       <InlineInput
         initial=""
-        placeholder={type === 'directory' ? 'folder name' : 'file name'}
+        placeholder={type === "directory" ? "folder name" : "file name"}
+        onValueChange={type === "file" ? setName : undefined}
+        suffix={
+          type === "file" && name.trim() ? (
+            <span
+              className="max-w-20 shrink-0 truncate font-mono text-micro text-muted-foreground"
+              title={`Detected language: ${language.label}`}
+              aria-live="polite"
+            >
+              {language.label}
+            </span>
+          ) : undefined
+        }
         onSubmit={onSubmit}
         onCancel={onCancel}
       />
@@ -660,11 +760,15 @@ function DraftRow({
 function InlineInput({
   initial,
   placeholder,
+  suffix,
+  onValueChange,
   onSubmit,
   onCancel,
 }: {
   initial: string;
   placeholder?: string;
+  suffix?: ReactNode;
+  onValueChange?: (value: string) => void;
   /** Returns false when the name was rejected and the field should stay open. */
   onSubmit: (value: string) => boolean;
   onCancel: () => void;
@@ -677,7 +781,7 @@ function InlineInput({
 
   useEffect(() => {
     ref.current?.focus();
-    const dot = initial.lastIndexOf('.');
+    const dot = initial.lastIndexOf(".");
     ref.current?.setSelectionRange(0, dot > 0 ? dot : initial.length);
   }, [initial]);
 
@@ -712,9 +816,12 @@ function InlineInput({
         ref={ref}
         value={value}
         placeholder={placeholder}
-        aria-label={initial ? `Rename ${initial}` : 'Name'}
+        aria-label={initial ? `Rename ${initial}` : "Name"}
         title="Enter to confirm, Escape to cancel"
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => {
+          setValue(event.target.value);
+          onValueChange?.(event.target.value);
+        }}
         onClick={(event) => event.stopPropagation()}
         onBlur={() => {
           // Nothing typed, or nothing changed: treat leaving as a cancel.
@@ -723,22 +830,24 @@ function InlineInput({
         }}
         onKeyDown={(event) => {
           event.stopPropagation();
-          if (event.key === 'Enter') {
+          if (event.key === "Enter") {
             event.preventDefault();
             submit();
           }
-          if (event.key === 'Escape') {
+          if (event.key === "Escape") {
             event.preventDefault();
             cancel();
           }
         }}
         className={cn(
-          'h-7 w-full min-w-0 rounded-sm border border-border-strong bg-surface px-1',
-          'text-secondary font-light text-foreground outline-none',
-          'placeholder:text-muted-foreground',
-          'focus-visible:outline-1 focus-visible:outline-focus-ring',
+          "h-7 w-full min-w-0 rounded-sm border border-border-strong bg-surface px-1",
+          "text-secondary font-light text-foreground outline-none",
+          "placeholder:text-muted-foreground",
+          "focus-visible:outline-1 focus-visible:outline-focus-ring",
         )}
       />
+
+      {suffix}
 
       <button
         type="button"
@@ -751,9 +860,9 @@ function InlineInput({
           cancel();
         }}
         className={cn(
-          'grid size-4 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none',
-          'transition-colors duration-[--duration-fast] hover:bg-surface-active hover:text-foreground',
-          'focus-visible:outline-1 focus-visible:outline-focus-ring',
+          "grid size-4 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none",
+          "transition-colors duration-[--duration-fast] hover:bg-surface-active hover:text-foreground",
+          "focus-visible:outline-1 focus-visible:outline-focus-ring",
         )}
       >
         <X className="size-3" aria-hidden="true" />

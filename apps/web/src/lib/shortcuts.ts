@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useWorkspace } from '../state/workspace';
 import { useUi } from '../state/ui';
 import { openViewer, recompile } from './run';
+import { formatActive } from './format';
 
 function isModifier(event: KeyboardEvent): boolean {
   return event.metaKey || event.ctrlKey;
@@ -31,8 +32,16 @@ export function useShortcuts(): void {
 
       if (key === 's') {
         event.preventDefault();
-        workspace.flushSave();
-        void workspace.compile();
+        const finish = () => {
+          workspace.flushSave();
+          void workspace.compile();
+        };
+        // Format the active file first when the project opts in, then save.
+        if (workspace.project?.settings.formatOnSave) {
+          void formatActive({ silent: true }).finally(finish);
+        } else {
+          finish();
+        }
         return;
       }
 

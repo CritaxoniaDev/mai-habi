@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+  ApiApplication,
+  BackendService,
   FileMap,
   PlaygroundSnapshot,
   Project,
@@ -7,7 +9,12 @@ import type {
   User,
   Visibility,
 } from '@mai-habi/types';
-import { SUPABASE_ANON_KEY, SUPABASE_ENABLED, SUPABASE_URL, viewerSharedUrl } from './config';
+import {
+  SUPABASE_ANON_KEY,
+  SUPABASE_ENABLED,
+  SUPABASE_URL,
+  viewerSharedUrl,
+} from './config';
 import { storeGitHubToken } from './github-auth';
 import { shareId as newShareId } from './ids';
 import { defaultSettings, filesFromSnapshot } from './projects';
@@ -43,7 +50,11 @@ export async function getSupabase(): Promise<SupabaseClient | null> {
 
   cache.loading = import('@supabase/supabase-js').then(({ createClient }) => {
     cache.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
     });
     return cache.client;
   });
@@ -68,11 +79,14 @@ export async function getCurrentUser(): Promise<User | null> {
     id: data.user.id,
     email: data.user.email ?? null,
     name: (data.user.user_metadata?.full_name as string | undefined) ?? null,
-    avatarUrl: (data.user.user_metadata?.avatar_url as string | undefined) ?? null,
+    avatarUrl:
+      (data.user.user_metadata?.avatar_url as string | undefined) ?? null,
   };
 }
 
-export async function onAuthChange(handler: (user: User | null) => void): Promise<() => void> {
+export async function onAuthChange(
+  handler: (user: User | null) => void,
+): Promise<() => void> {
   const supabase = await getSupabase();
   if (!supabase) return () => {};
 
@@ -114,7 +128,10 @@ export async function signOut(): Promise<void> {
 
 /* -------------------------------------------------------------- project sync */
 
-export async function syncProjectToCloud(project: Project, files: FileMap): Promise<void> {
+export async function syncProjectToCloud(
+  project: Project,
+  files: FileMap,
+): Promise<void> {
   const supabase = await getSupabase();
   if (!supabase) return;
 
@@ -153,7 +170,9 @@ export async function syncProjectToCloud(project: Project, files: FileMap): Prom
   if (deleteError) throw deleteError;
 
   if (rows.length > 0) {
-    const { error: insertError } = await supabase.from('project_files').insert(rows);
+    const { error: insertError } = await supabase
+      .from('project_files')
+      .insert(rows);
     if (insertError) throw insertError;
   }
 }
@@ -201,7 +220,11 @@ export async function fetchCloudProject(
   const supabase = await getSupabase();
   if (!supabase) return null;
 
-  const { data, error } = await supabase.from('projects').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
   if (error || !data) return null;
 
   const { data: rows } = await supabase
@@ -210,7 +233,8 @@ export async function fetchCloudProject(
     .eq('project_id', id);
 
   const sources: Record<string, string> = {};
-  for (const row of rows ?? []) sources[String(row.path)] = String(row.content ?? '');
+  for (const row of rows ?? [])
+    sources[String(row.path)] = String(row.content ?? '');
 
   return {
     project: rowToProject(data),
@@ -221,6 +245,7 @@ export async function fetchCloudProject(
       tailwind: Boolean(data.tailwind),
       // Fonts are not persisted as a cloud column yet; they travel in settings.
       fonts: [],
+      mockApiRoutes: [],
       viewerToolbar: true,
       files: sources,
       updatedAt: Date.now(),
@@ -267,7 +292,9 @@ export interface PublishInput {
  * project is a handful of small text files, so a row is both simpler and
  * cheaper than a bucket.
  */
-export async function publishToCloud(input: PublishInput): Promise<Share | null> {
+export async function publishToCloud(
+  input: PublishInput,
+): Promise<Share | null> {
   const supabase = await getSupabase();
   if (!supabase) return null;
 
@@ -282,7 +309,9 @@ export async function publishToCloud(input: PublishInput): Promise<Share | null>
     guest_id: ownerId ? null : input.guestId,
     visibility: input.visibility,
     snapshot: input.snapshot,
-    expires_at: input.expiresAt ? new Date(input.expiresAt).toISOString() : null,
+    expires_at: input.expiresAt
+      ? new Date(input.expiresAt).toISOString()
+      : null,
   });
   // Supabase errors are plain objects, not Error instances — wrap so callers
   // (and any UI showing the message) get the real reason, not a generic one.
@@ -312,10 +341,136 @@ export async function fetchShared(share: string): Promise<{
     .maybeSingle();
 
   if (error || !data?.snapshot) return null;
-  if (data.expires_at && Date.parse(String(data.expires_at)) < Date.now()) return null;
+  if (data.expires_at && Date.parse(String(data.expires_at)) < Date.now())
+    return null;
 
   return {
     snapshot: data.snapshot as PlaygroundSnapshot,
     visibility: data.visibility as Exclude<Visibility, 'private'>,
   };
+}
+
+/* ---------------------------------------------------------- published APIs */
+
+function rowToApiApplication(row: Record<string, unknown>): ApiApplication {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? 'Untitled API'),
+    routes: Array.isArray(row.routes)
+      ? (row.routes as ApiApplication['routes'])
+      : [],
+    corsOrigin: String(row.cors_origin ?? '*'),
+    enabled: Boolean(row.enabled),
+    createdAt: Date.parse(String(row.created_at ?? '')) || Date.now(),
+    updatedAt: Date.parse(String(row.updated_at ?? '')) || Date.now(),
+    publishedAt: Date.parse(String(row.updated_at ?? '')) || null,
+  };
+}
+
+/** Returns API definitions owned by the signed-in account. */
+export async function listPublishedApiApplications(): Promise<
+  ApiApplication[]
+> {
+  const supabase = await getSupabase();
+  if (!supabase) return [];
+
+  const { data: session } = await supabase.auth.getUser();
+  const ownerId = session.user?.id;
+  if (!ownerId) return [];
+
+  const { data, error } = await supabase
+    .from('published_apis')
+    .select('*')
+    .eq('owner_id', ownerId)
+    .order('updated_at', { ascending: false });
+  if (error) throw new Error(error.message || 'Could not load published APIs.');
+
+  return (data ?? []).map((row) => rowToApiApplication(row));
+}
+
+/** Creates or updates the public copy of an API definition. */
+export async function publishApiApplication(
+  application: ApiApplication,
+): Promise<ApiApplication> {
+  const supabase = await getSupabase();
+  if (!supabase) throw new Error('Cloud features are not configured.');
+
+  const { data: session } = await supabase.auth.getUser();
+  const ownerId = session.user?.id;
+  if (!ownerId) throw new Error('Sign in before publishing an API.');
+
+  const { data, error } = await supabase
+    .from('published_apis')
+    .upsert({
+      id: application.id,
+      owner_id: ownerId,
+      name: application.name.trim() || 'Untitled API',
+      routes: application.routes,
+      cors_origin: application.corsOrigin.trim() || '*',
+      enabled: application.enabled,
+      updated_at: new Date().toISOString(),
+    })
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Could not publish the API.');
+  }
+
+  return rowToApiApplication(data);
+}
+
+/** Removes the public copy while leaving the browser draft untouched. */
+export async function unpublishApiApplication(id: string): Promise<void> {
+  const supabase = await getSupabase();
+  if (!supabase) throw new Error('Cloud features are not configured.');
+
+  const { data: session } = await supabase.auth.getUser();
+  if (!session.user) throw new Error('Sign in before unpublishing an API.');
+
+  const { error } = await supabase.from('published_apis').delete().eq('id', id);
+  if (error) throw new Error(error.message || 'Could not unpublish the API.');
+}
+
+/* --------------------------------------------------------- backend services */
+
+export async function publishBackendService(
+  service: BackendService,
+): Promise<void> {
+  const supabase = await getSupabase();
+  if (!supabase) throw new Error('Cloud features are not configured.');
+  const { data: session } = await supabase.auth.getUser();
+  const ownerId = session.user?.id;
+  if (!ownerId) throw new Error('Sign in before publishing a backend service.');
+  if (!service.deploymentUrl)
+    throw new Error('Deploy the service before publishing its URL.');
+
+  const { error } = await supabase.from('backend_services').upsert({
+    id: service.id,
+    owner_id: ownerId,
+    name: service.name.trim() || 'Untitled service',
+    project_name: service.projectName,
+    deployment_url: service.deploymentUrl,
+    enabled: service.enabled,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) {
+    if (error.message.includes('backend_services_vercel_url')) {
+      throw new Error(
+        'The backend-services database schema is outdated. Apply the latest Supabase migration, then deploy again.',
+      );
+    }
+    throw new Error(error.message || 'Could not publish the service gateway.');
+  }
+}
+
+export async function unpublishBackendService(id: string): Promise<void> {
+  const supabase = await getSupabase();
+  if (!supabase) throw new Error('Cloud features are not configured.');
+  const { error } = await supabase
+    .from('backend_services')
+    .delete()
+    .eq('id', id);
+  if (error)
+    throw new Error(error.message || 'Could not remove the service gateway.');
 }

@@ -22,7 +22,9 @@
 declare const process: { env: Record<string, string | undefined> };
 
 /** Astro/Vite populate `import.meta.env`; Next.js leaves it undefined. */
-const viteEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+const viteEnv = (
+  import.meta as unknown as { env?: Record<string, string | undefined> }
+).env;
 
 function clean(raw: string | undefined, fallback: string): string {
   return raw && raw.length > 0 ? raw.replace(/\/$/, '') : fallback;
@@ -47,7 +49,8 @@ export const SUPABASE_URL = clean(
   '',
 );
 export const SUPABASE_ANON_KEY = clean(
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || viteEnv?.PUBLIC_SUPABASE_ANON_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    viteEnv?.PUBLIC_SUPABASE_ANON_KEY,
   '',
 );
 
@@ -80,4 +83,18 @@ export function viewerProjectUrl(projectId: string): string {
 
 export function viewerSharedUrl(shareId: string): string {
   return `${EDITOR_ORIGIN}/view/${shareId}`;
+}
+
+export function publicApiBaseUrl(
+  apiId: string,
+  origin = EDITOR_ORIGIN,
+): string {
+  return `${origin.replace(/\/$/, '')}/api/public/${apiId}`;
+}
+
+export function backendServiceBaseUrl(
+  serviceId: string,
+  origin = EDITOR_ORIGIN,
+): string {
+  return `${origin.replace(/\/$/, '')}/api/services/${serviceId}`;
 }

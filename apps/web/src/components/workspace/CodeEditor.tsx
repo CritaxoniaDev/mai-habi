@@ -19,6 +19,7 @@ import { useWorkspace } from '../../state/workspace';
  */
 import { configureMonaco, monaco } from '../../lib/monaco-runtime';
 import { monacoThemeName } from '../../lib/editor-themes';
+import { formatActive } from '../../lib/format';
 
 function modelFor(path: string, content: string): monaco.editor.ITextModel {
   const uri = monaco.Uri.parse(`file:///${path}`);
@@ -89,6 +90,20 @@ export function CodeEditor() {
       wordWrap: 'off',
       multiCursorModifier: 'ctrlCmd',
       formatOnPaste: true,
+    });
+
+    // Format the active file (Shift+Alt+F), matching VS Code. Registered as an
+    // editor action so it also appears in Monaco's context menu and works while
+    // the editor has focus, which the window-level shortcuts cannot claim.
+    editor.current.addAction({
+      id: 'mai-habi.format-document',
+      label: 'Format Document',
+      keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+      contextMenuGroupId: '1_modification',
+      contextMenuOrder: 1.5,
+      run: () => {
+        void formatActive();
+      },
     });
 
     const changed = editor.current.onDidChangeModelContent(() => {

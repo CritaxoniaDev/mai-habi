@@ -1,11 +1,11 @@
-import type { Metadata } from 'next';
-import { SquareTerminal, Webhook } from 'lucide-react';
-import AuthMenu from '../../islands/AuthMenu';
-import GitHubBrowser from '../../components/github/GitHubBrowser';
-import ThemeControl from '../../islands/ThemeControl';
+import type { Metadata } from "next";
+import { ArrowLeft, Webhook } from "lucide-react";
+import AuthMenu from "../../islands/AuthMenu";
+import GitHubBrowser from "../../components/github/GitHubBrowser";
+import ThemeControl from "../../islands/ThemeControl";
 
 export const metadata: Metadata = {
-  title: 'Repositories',
+  title: "Repositories",
 };
 
 /**
@@ -14,18 +14,24 @@ export const metadata: Metadata = {
  */
 export default function GitHubPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="z-header sticky top-0 border-b border-border bg-surface/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <header className="z-header flex h-12 shrink-0 items-center border-b border-border bg-surface px-3">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
           <a
-            href="/"
-            className="flex items-center gap-2.5 rounded-md outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            href="/projects"
+            className="touch-target flex items-center gap-2 rounded-md px-2 text-secondary font-light text-foreground outline-none transition-colors duration-[--duration-fast] hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
           >
-            <span className="grid size-7 place-items-center rounded-md bg-accent text-accent-foreground">
-              <SquareTerminal className="size-4" aria-hidden="true" />
-            </span>
-            <span className="text-secondary font-normal text-foreground">Playground</span>
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Playground</span>
           </a>
+
+          <span aria-hidden="true" className="-ml-1 text-border-strong">
+            /
+          </span>
+
+          <span className="mr-auto truncate text-secondary font-light text-foreground">
+            GitHub repositories
+          </span>
 
           <div className="flex items-center gap-1">
             <a
@@ -35,14 +41,17 @@ export default function GitHubPage() {
               <Webhook className="size-3.5" aria-hidden="true" />
               REST client
             </a>
-            <span aria-hidden="true" className="mx-1 hidden h-4 w-px bg-border sm:block" />
+            <span
+              aria-hidden="true"
+              className="mx-1 hidden h-4 w-px bg-border sm:block"
+            />
             <ThemeControl />
             <AuthMenu />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 pb-20">
+      <main className="min-h-0 flex-1 overflow-hidden">
         <GitHubBrowser />
       </main>
     </div>

@@ -52,13 +52,51 @@ export default function Head(props) {
 `;
 
 const SCRIPT = `
-import { createElement } from 'react';
+import { useEffect, useRef } from 'react';
 export default function Script(props) {
   const { children, dangerouslySetInnerHTML, strategy, onLoad, onReady, onError, ...rest } = props;
-  if (dangerouslySetInnerHTML || children != null) {
-    return createElement('script', { ...rest, dangerouslySetInnerHTML: dangerouslySetInnerHTML || { __html: String(children) } });
-  }
-  return createElement('script', rest);
+  const executed = useRef(false);
+
+  useEffect(() => {
+    if (executed.current) return;
+
+    const script = document.createElement('script');
+    for (const [name, value] of Object.entries(rest)) {
+      if (value == null || value === false) continue;
+      const attribute = name === 'className' ? 'class' : name;
+      script.setAttribute(attribute, value === true ? '' : String(value));
+    }
+    if (!script.nonce && window.__previewNonce) {
+      script.nonce = window.__previewNonce;
+    }
+
+    const inline = dangerouslySetInnerHTML && dangerouslySetInnerHTML.__html != null
+      ? dangerouslySetInnerHTML.__html
+      : children;
+    if (inline != null) script.textContent = String(inline);
+
+    if (typeof onLoad === 'function') script.addEventListener('load', onLoad);
+    if (typeof onError === 'function') script.addEventListener('error', onError);
+    if (typeof onReady === 'function') {
+      script.addEventListener('load', onReady);
+      if (!script.src) queueMicrotask(onReady);
+    }
+
+    const append = () => {
+      if (executed.current) return;
+      executed.current = true;
+      document.body.appendChild(script);
+    };
+
+    if (strategy === 'lazyOnload' && document.readyState !== 'complete') {
+      window.addEventListener('load', append, { once: true });
+      return () => window.removeEventListener('load', append);
+    }
+
+    append();
+  }, []);
+
+  return null;
 }
 `;
 

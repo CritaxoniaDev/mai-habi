@@ -19,8 +19,12 @@ import {
 import {
   Command as CommandIcon,
   Download,
+  ExternalLink,
+  FlaskConical,
+  History,
   MoreHorizontal,
   PanelLeft,
+  Palette,
   Play,
   RotateCw,
   Settings,
@@ -30,6 +34,7 @@ import { useWorkspace } from '../state/workspace';
 import { useUi } from '../state/ui';
 import { useSession } from '../state/session';
 import { openViewer, recompile } from '../lib/run';
+import { openInCodeSandbox, openInStackBlitz } from '../lib/export-targets';
 import AuthMenu from './AuthMenu';
 
 const SAVE_LABEL: Record<SaveStatus, string> = {
@@ -61,7 +66,8 @@ export default function WorkspaceHeader() {
     void initialise();
   }, [initialise]);
 
-  const busy = compileState === 'compiling' || compileState === 'loading-compiler';
+  const busy =
+    compileState === 'compiling' || compileState === 'loading-compiler';
 
   return (
     <TooltipProvider>
@@ -79,7 +85,7 @@ export default function WorkspaceHeader() {
         </Tooltip>
 
         <a
-          href="/"
+          href="/projects"
           className={cn(
             'rounded-sm px-1 text-secondary font-normal text-foreground outline-none',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring',
@@ -171,22 +177,52 @@ export default function WorkspaceHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
+                onSelect={() => useUi.getState().setDialog('history')}
+              >
+                <History /> Version history
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => useUi.getState().setDialog('design-tokens')}
+              >
+                <Palette /> Design tokens
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => useUi.getState().setDialog('mock-api')}
+              >
+                <FlaskConical /> Mock API lab
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onSelect={() => {
-                  if (project) void downloadProject(useWorkspace.getState().files, project.name);
+                  if (project)
+                    void downloadProject(
+                      useWorkspace.getState().files,
+                      project.name,
+                    );
                 }}
               >
                 <Download /> Export as ZIP
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openInStackBlitz()}>
+                <ExternalLink /> Open in StackBlitz
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openInCodeSandbox()}>
+                <ExternalLink /> Open in CodeSandbox
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a href="/rest">
                   <Webhook /> REST client
                 </a>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => useUi.getState().setDialog('settings')}>
+              <DropdownMenuItem
+                onSelect={() => useUi.getState().setDialog('settings')}
+              >
                 <Settings /> Project settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => useUi.getState().setPalette('commands')}>
+              <DropdownMenuItem
+                onSelect={() => useUi.getState().setPalette('commands')}
+              >
                 <CommandIcon /> Command palette
                 <DropdownMenuShortcut>⌘⇧P</DropdownMenuShortcut>
               </DropdownMenuItem>
@@ -210,7 +246,11 @@ function ProjectName() {
   }, [editing]);
 
   if (!project) {
-    return <span className="text-secondary font-light text-muted-foreground">Loading</span>;
+    return (
+      <span className="text-secondary font-light text-muted-foreground">
+        Loading
+      </span>
+    );
   }
 
   if (editing) {

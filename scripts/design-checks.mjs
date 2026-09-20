@@ -390,9 +390,10 @@ export function registerDesignChecks(check) {
     );
   });
 
-  check('every layout runs the pre-paint script inline', () => {
-    // The web app is Next.js: its root layout injects the script through
-    // dangerouslySetInnerHTML. The marketing site is still Astro (is:inline).
+  check('the root layout runs the pre-paint script inline', () => {
+    // One Next.js app now: the root layout injects the theme script through
+    // dangerouslySetInnerHTML, and every route (the playground, the marketing
+    // pages and the docs) is nested under it, so this one check covers them all.
     const nextLayout = fs.readFileSync(
       path.join(ROOT, 'apps/web/src/app/layout.tsx'),
       'utf8',
@@ -402,13 +403,6 @@ export function registerDesignChecks(check) {
       !nextLayout.includes('dangerouslySetInnerHTML')
     ) {
       throw new Error('apps/web/src/app/layout.tsx does not inline the theme script');
-    }
-
-    for (const layout of ['apps/marketing/src/layouts/Base.astro']) {
-      const contents = fs.readFileSync(path.join(ROOT, layout), 'utf8');
-      if (!contents.includes('is:inline') || !contents.includes('THEME_INIT_SCRIPT')) {
-        throw new Error(`${layout} does not inline the theme script`);
-      }
     }
     return true;
   });
